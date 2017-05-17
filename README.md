@@ -10,10 +10,17 @@ Elastic search for Sylius.
     ```bash
     $ composer require lakion/sylius-elastic-search-bundle
     ```
-2. Install elastic search server:
+2. Install elastic search server, 5.x series required:
 
+    MacOS
+    
     ```bash
-    $ brew install elasticsearch@2.4
+    $ brew install elasticsearch
+    ```
+    
+    Ubuntu/Debian/etc
+    ```bash
+    $ apt-get install elasticsearch
     ```
 
 3. Run elastic search server:
@@ -29,25 +36,27 @@ Elastic search for Sylius.
     new \Lakion\SyliusElasticSearchBundle\LakionSyliusElasticSearchBundle(),
     ```
 
-5. Create/Setup database:
+5. Create/Setup database if required:
 
     ```bash
-    $ app/console do:da:cr
-    $ app/console do:sch:cr
-    $ app/console syl:fix:lo
+    $ bin/console do:da:cr
+    $ bin/console do:sch:cr
+    $ bin/console syl:fix:lo
     ```
 
-6. Populate your elastic search server with command or your custom code:
-
-    ```bash
-    $ app/console fos:elastic:pop
-    ```
+6. Import config file in `app/config/config.yml` for default filter set configuration:
+   
+       ```yaml
+       imports:
+          - { resource: "@LakionSyliusElasticSearchBundle/Resources/config/app/config.yml" }
+       ```
 
 7. Import config file in `app/config/config.yml` for default filter set configuration:
 
-    ```yaml
-    imports:
-       - { resource: "@LakionSyliusElasticSearchBundle/Resources/config/app/config.yml" }
+    Populate your elastic search server with command or your custom code:
+
+    ```bash
+    $ bin/console fos:elastic:pop
     ```
 
 8. Import routing files in `app/config/routing.yml`:

@@ -18,7 +18,7 @@ use FOS\ElasticaBundle\Repository;
 use Lakion\SyliusElasticSearchBundle\Search\Criteria\Filtering\ProductHasOptionCodesFilter;
 use Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Query\QueryFactoryInterface;
 use Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Search\SearchFactoryInterface;
-use ONGR\ElasticsearchDSL\Aggregation\FiltersAggregation;
+use ONGR\ElasticsearchDSL\Aggregation\Bucketing\FiltersAggregation;
 use ONGR\ElasticsearchDSL\Search;
 use Sylius\Component\Product\Model\ProductOptionValue;
 use Sylius\Component\Product\Model\ProductOptionValueInterface;
@@ -57,6 +57,7 @@ final class OptionCodeFilterType extends AbstractType implements DataTransformer
      * @param RepositoryManagerInterface $repositoryManager
      * @param QueryFactoryInterface $productHasOptionCodeQueryFactory
      * @param SearchFactoryInterface $searchFactory
+     * @param string $productModelClass
      */
     public function __construct(
         RepositoryManagerInterface $repositoryManager,

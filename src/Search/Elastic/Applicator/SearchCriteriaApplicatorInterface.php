@@ -11,7 +11,6 @@
 
 namespace Lakion\SyliusElasticSearchBundle\Search\Elastic\Applicator;
 
-use Lakion\SyliusElasticSearchBundle\Search\Criteria\Criteria;
 use ONGR\ElasticsearchDSL\Search;
 
 /**
