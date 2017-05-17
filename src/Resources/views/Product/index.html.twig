@@ -28,6 +28,7 @@
                     {% endfor %}
                 </div>
                 <div class="ui hidden divider"></div>
+                {{ pagination.simple(pagerfanta) }}
             {% else %}
                 {{ messages.info('sylius.ui.no_results_to_display') }}
             {% endif %}

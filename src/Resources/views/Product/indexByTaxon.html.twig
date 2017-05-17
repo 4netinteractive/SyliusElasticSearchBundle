@@ -29,7 +29,7 @@
                     {% endfor %}
                 </div>
                 <div class="ui hidden divider"></div>
-                {{ pagerfanta(pagerfanta, 'semantic_ui_translated', options|default({})) }}
+                {{ pagination.simple(pagerfanta) }}
             {% else %}
                 {{ messages.info('sylius.ui.no_results_to_display') }}
             {% endif %}

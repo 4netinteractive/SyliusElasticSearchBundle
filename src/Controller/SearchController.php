@@ -113,6 +113,10 @@ final class SearchController
             $criteria->getPaginating()->getItemsPerPage()
         );
 
+        $pager = new Pagerfanta(new FantaPaginatorAdapter($result));
+        $pager->setCurrentPage($criteria->getPaginating()->getCurrentPage());
+        $pager->setMaxPerPage($criteria->getPaginating()->getItemsPerPage());
+
         $view->setData(
             [
                 'products' => $partialResult->toArray(),
