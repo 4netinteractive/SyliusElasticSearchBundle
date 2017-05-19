@@ -72,11 +72,12 @@ final class SearchController
         TaxonRepositoryInterface $taxonRepository,
         ShopperContextInterface $shopperContext
     ) {
-        $this->restViewHandler = $restViewHandler;
-        $this->searchEngine    = $searchEngine;
-        $this->formFactory     = $formFactory;
-        $this->taxonRepository = $taxonRepository;
-        $this->shopperContext  = $shopperContext;
+        $this->restViewHandler              = $restViewHandler;
+        $this->searchEngine                 = $searchEngine;
+        $this->formFactory                  = $formFactory;
+        $this->taxonRepository              = $taxonRepository;
+        $this->shopperContext               = $shopperContext;
+        $this->shopperContext               = $shopperContext;
     }
 
     /**
@@ -211,7 +212,9 @@ final class SearchController
                     new ProductInChannelFilter($this->shopperContext->getChannel()->getCode()),
                 ]
             ),
-            ['filter_set' => $taxon->getCode()]
+            [
+                'filter_set'     => $taxon->getCode()
+            ]
         );
         $form->handleRequest($request);
 
@@ -219,22 +222,21 @@ final class SearchController
         $criteria = $form->getData();
 
         /** @var PaginatorAdapterInterface $result */
-        $result        = $this->searchEngine->match($criteria);
-        $partialResult = $result->getResults(
-            $criteria->getPaginating()->getOffset(),
-            $criteria->getPaginating()->getItemsPerPage()
-        );
+        $result = $this->searchEngine->match($criteria);
+        dump($result->getTotalHits());
+        exit;
 
-        $pager = new Pagerfanta(new FantaPaginatorAdapter($result));
+        $adapter = new FantaPaginatorAdapter($result);
+        $pager = new Pagerfanta($adapter);
         $pager->setCurrentPage($criteria->getPaginating()->getCurrentPage());
         $pager->setMaxPerPage($criteria->getPaginating()->getItemsPerPage());
 
         $view->setData(
             [
-                'products' => $partialResult->toArray(),
-                'form'     => $form->createView(),
-                'criteria' => $criteria,
-                'pagerfanta' => $pager
+                'resources' => ['data' => $pager],
+                'form'      => $form->createView(),
+                'criteria'  => $criteria,
+                //'pagerfanta' => $pager
             ]
         );
 

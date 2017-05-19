@@ -54,21 +54,29 @@ final class OptionCodeFilterType extends AbstractType implements DataTransformer
     private $searchFactory;
 
     /**
+     * @var EntityRepository
+     */
+    private $productOptionValueRepository;
+
+    /**
      * @param RepositoryManagerInterface $repositoryManager
-     * @param QueryFactoryInterface $productHasOptionCodeQueryFactory
-     * @param SearchFactoryInterface $searchFactory
-     * @param string $productModelClass
+     * @param QueryFactoryInterface      $productHasOptionCodeQueryFactory
+     * @param SearchFactoryInterface     $searchFactory
+     * @param string                     $productModelClass
+     * @param EntityRepository           $productOptionValueRepository
      */
     public function __construct(
         RepositoryManagerInterface $repositoryManager,
         QueryFactoryInterface $productHasOptionCodeQueryFactory,
         SearchFactoryInterface $searchFactory,
-        $productModelClass
+        $productModelClass,
+        EntityRepository $productOptionValueRepository
     ) {
-        $this->repositoryManager = $repositoryManager;
+        $this->repositoryManager                = $repositoryManager;
         $this->productHasOptionCodeQueryFactory = $productHasOptionCodeQueryFactory;
-        $this->searchFactory = $searchFactory;
-        $this->productModelClass = $productModelClass;
+        $this->searchFactory                    = $searchFactory;
+        $this->productModelClass                = $productModelClass;
+        $this->productOptionValueRepository     = $productOptionValueRepository;
     }
 
     /**
@@ -76,79 +84,54 @@ final class OptionCodeFilterType extends AbstractType implements DataTransformer
      */
     public function buildForm(FormBuilderInterface $builder, array $options)
     {
-        $builder->add('code', EntityType::class, [
-            'class' => $options['class'],
-            'choice_value' => function (ProductOptionValue $productOptionValue) {
-                return $productOptionValue->getCode();
-            },
-            'query_builder' => function (EntityRepository $repository) use ($options) {
-                $queryBuilder = $repository->createQueryBuilder('o');
+        /** @var ProductOptionValueInterface $optionValues */
+        $optionValues =
+            $this
+                ->productOptionValueRepository
+                ->createQueryBuilder('o')
+                ->leftJoin('o.option', 'option')
+                ->andWhere('option.code = :optionCode')
+                ->setParameter('optionCode', $options['option_code'])
+                ->getQuery()
+                ->getResult()
+        ;
 
-                return $queryBuilder
-                    ->leftJoin('o.option', 'option')
-                    ->andWhere('option.code = :optionCode')
-                    ->setParameter('optionCode', $options['option_code']);
-            },
-            'choice_label' => function (ProductOptionValue $productOptionValue) use ($options) {
 
-                /** @var Repository $repository */
-                $repository = $this->repositoryManager->getRepository($this->productModelClass);
-                $query = $this->buildAggregation($productOptionValue->getCode())->toArray();
-                $result = $repository->createPaginatorAdapter($query);
-                $aggregation = $result->getAggregations();
-                $count = $aggregation[$productOptionValue->getCode()]['buckets'][$productOptionValue->getCode()]['doc_count'];
+        $builder->add(
+            'code',
+            EntityType::class,
+            [
+                'class'         => $options['class'],
+                'choice_value'  => function (ProductOptionValue $productOptionValue) {
+                    return $productOptionValue->getCode();
+                },
+//                'choices' => $optionValues,
+                'query_builder' => function (EntityRepository $repository) use ($options) {
+                    $queryBuilder = $repository->createQueryBuilder('o');
 
-                return sprintf('%s (%s)', $productOptionValue->getValue(), $count);
-            },
-            'multiple' => true,
-            'expanded' => true,
-        ]);
+                    return $queryBuilder
+                        ->leftJoin('o.option', 'option')
+                        ->andWhere('option.code = :optionCode')
+                        ->setParameter('optionCode', $options['option_code'])
+                        ;
+                },
+                'choice_label'  => function (ProductOptionValue $productOptionValue) use ($options) {
+                    /** @var Repository $repository */
+                    $repository  = $this->repositoryManager->getRepository($this->productModelClass);
+                    $query       = $this->buildAggregation($productOptionValue->getCode())->toArray();
+                    $result      = $repository->createPaginatorAdapter($query);
+                    $aggregation = $result->getAggregations();
+                    $count       = $aggregation[$productOptionValue->getCode()]['buckets'][$productOptionValue->getCode(
+                    )]['doc_count'];
+
+                    return sprintf('%s (%s)', $productOptionValue->getValue(), $count);
+                },
+                'multiple'      => true,
+                'expanded'      => true,
+            ]
+        );
 
         $builder->addModelTransformer($this);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function transform($value)
-    {
-        if (null  === $value) {
-            return null;
-        }
-
-        return $value;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function reverseTransform($value)
-    {
-        if ($value['code'] instanceof Collection) {
-            $productOptionCodes = $value['code']->map(function (ProductOptionValueInterface $productOptionValue) {
-                return $productOptionValue->getCode();
-            });
-
-            if ($productOptionCodes->isEmpty()) {
-                return null;
-            }
-
-            return new ProductHasOptionCodesFilter($productOptionCodes->toArray());
-        }
-
-        return null;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function configureOptions(OptionsResolver $resolver)
-    {
-        $resolver
-            ->setDefault('class', ProductOptionValue::class)
-            ->setRequired('option_code')
-            ->setAllowedTypes('option_code', 'string')
-        ;
     }
 
     /**
@@ -169,5 +152,51 @@ final class OptionCodeFilterType extends AbstractType implements DataTransformer
         $aggregationSearch->addAggregation($hasOptionValueAggregation);
 
         return $aggregationSearch;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function configureOptions(OptionsResolver $resolver)
+    {
+        $resolver
+            ->setDefault('class', ProductOptionValue::class)
+            ->setRequired('option_code')
+            ->setAllowedTypes('option_code', 'string')
+        ;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function transform($value)
+    {
+        if (null === $value) {
+            return null;
+        }
+
+        return $value;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function reverseTransform($value)
+    {
+        if ($value['code'] instanceof Collection) {
+            $productOptionCodes = $value['code']->map(
+                function (ProductOptionValueInterface $productOptionValue) {
+                    return $productOptionValue->getCode();
+                }
+            );
+
+            if ($productOptionCodes->isEmpty()) {
+                return null;
+            }
+
+            return new ProductHasOptionCodesFilter($productOptionCodes->toArray());
+        }
+
+        return null;
     }
 }

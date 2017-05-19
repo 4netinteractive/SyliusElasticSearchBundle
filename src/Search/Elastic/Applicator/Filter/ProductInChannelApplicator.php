@@ -31,6 +31,6 @@ final class ProductInChannelApplicator extends SearchCriteriaApplicator
      */
     public function applyProductInChannelFilter(ProductInChannelFilter $inChannelFilter, Search $search)
     {
-        $search->addFilter($this->productInChannelQueryFactory->create(['channel_code' => $inChannelFilter->getChannelCode()]), BoolQuery::MUST);
+        $search->addPostFilter($this->productInChannelQueryFactory->create(['channel_code' => $inChannelFilter->getChannelCode()]), BoolQuery::MUST);
     }
 }

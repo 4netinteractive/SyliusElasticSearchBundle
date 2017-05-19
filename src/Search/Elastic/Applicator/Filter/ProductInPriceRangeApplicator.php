@@ -31,7 +31,7 @@ final class ProductInPriceRangeApplicator extends SearchCriteriaApplicator
      */
     public function applyProductInPriceRangeFilter(ProductInPriceRangeFilter $inPriceRangeFilter, Search $search)
     {
-        $search->addFilter(
+        $search->addPostFilter(
             $this->productInPriceRangeQueryFactory->create([
                 'product_price_range' => [
                     'grater_than' => $inPriceRangeFilter->getGraterThan(),

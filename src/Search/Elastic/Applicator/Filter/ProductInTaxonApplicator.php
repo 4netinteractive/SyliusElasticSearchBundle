@@ -40,11 +40,11 @@ final class ProductInTaxonApplicator extends SearchCriteriaApplicator
      */
     public function applyProductInTaxonFilter(ProductInTaxonFilter $inTaxonFilter, Search $search)
     {
-        $search->addFilter(
+        $search->addPostFilter(
             $this->productInMainTaxonQueryFactory->create(['taxon_code' => $inTaxonFilter->getTaxonCode()]),
             BoolQuery::SHOULD
         );
-        $search->addFilter(
+        $search->addPostFilter(
             $this->productInProductTaxonsQueryFactory->create(['taxon_code' => $inTaxonFilter->getTaxonCode()]),
             BoolQuery::SHOULD
         );
