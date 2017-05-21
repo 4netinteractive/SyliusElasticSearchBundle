@@ -223,13 +223,12 @@ final class SearchController
 
         /** @var PaginatorAdapterInterface $result */
         $result = $this->searchEngine->match($criteria);
-        dump($result->getTotalHits());
-        exit;
 
         $adapter = new FantaPaginatorAdapter($result);
         $pager = new Pagerfanta($adapter);
         $pager->setCurrentPage($criteria->getPaginating()->getCurrentPage());
         $pager->setMaxPerPage($criteria->getPaginating()->getItemsPerPage());
+        $pager->getCurrentPageResults();
 
         $view->setData(
             [
