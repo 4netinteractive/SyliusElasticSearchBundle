@@ -53,6 +53,11 @@ fos_elastica:
                             type: "nested"
                             properties:
                                 value: { type: string }
+                                locale_code: { type: keyword, index: not_analyzed }
+                                attribute:
+                                    type: "nested"
+                                    properties:
+                                        code: { type: keyword, index: not_analyzed, copy_to: attributes.code }
                         channels:
                             type: "nested"
                             properties:
