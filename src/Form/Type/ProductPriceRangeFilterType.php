@@ -16,6 +16,7 @@ use Sylius\Bundle\MoneyBundle\Form\Type\MoneyType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\DataTransformerInterface;
 use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\OptionsResolver\OptionsResolver;
 
 /**
  * @author Arkadiusz Krakowiak <arkadiusz.krakowiak@lakion.com>
@@ -56,5 +57,19 @@ final class ProductPriceRangeFilterType extends AbstractType implements DataTran
         }
 
         return new ProductInPriceRangeFilter($value['grater_than'], $value['less_than']);
+    }
+
+
+    /**
+     * {@inheritdoc}
+     */
+    public function configureOptions(OptionsResolver $resolver)
+    {
+        $resolver
+            ->setDefined('taxon')
+            ->setAllowedTypes('taxon', 'string')
+            ->setDefined('locale')
+            ->setAllowedTypes('locale', 'string')
+        ;
     }
 }

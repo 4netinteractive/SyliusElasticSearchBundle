@@ -35,14 +35,14 @@ final class FilterSetType extends AbstractType
     private $filterSetConfigurationProvider;
 
     /**
-     * @param FormTypeRegistryInterface $filterTypeRegistry
+     * @param FormTypeRegistryInterface  $filterTypeRegistry
      * @param FilterSetProviderInterface $filterSetConfigurationProvider
      */
     public function __construct(
         FormTypeRegistryInterface $filterTypeRegistry,
         FilterSetProviderInterface $filterSetConfigurationProvider
     ) {
-        $this->filterTypeRegistry = $filterTypeRegistry;
+        $this->filterTypeRegistry             = $filterTypeRegistry;
         $this->filterSetConfigurationProvider = $filterSetConfigurationProvider;
     }
 
@@ -52,7 +52,9 @@ final class FilterSetType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options)
     {
         try {
-            $filters = $this->filterSetConfigurationProvider->getFilterSetConfiguration($options['filter_set'])->getFilters();
+            $filters = $this->filterSetConfigurationProvider->getFilterSetConfiguration($options['filter_set'])
+                ->getFilters()
+            ;
         } catch (FilterSetConfigurationNotFoundException $configurationNotFoundException) {
             $filters = $this->filterSetConfigurationProvider->getFilterSetConfiguration('default')->getFilters();
         }
@@ -61,7 +63,7 @@ final class FilterSetType extends AbstractType
             $builder->add(
                 $filter->getName(),
                 $this->filterTypeRegistry->get('default', $filter->getType()),
-                $filter->getOptions()
+                array_merge(['taxon' => $options['taxon'], 'locale' => $options['locale']], $filter->getOptions())
             );
         }
 
@@ -77,6 +79,10 @@ final class FilterSetType extends AbstractType
             ->setDefault('csrf_protection', false)
             ->setRequired('filter_set')
             ->setAllowedTypes('filter_set', 'string')
+            ->setDefined('taxon')
+            ->setAllowedTypes('taxon', 'string')
+            ->setDefined('locale')
+            ->setAllowedTypes('locale', 'string')
         ;
     }
 }

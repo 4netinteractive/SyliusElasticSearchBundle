@@ -16,6 +16,7 @@ use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\DataTransformerInterface;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\OptionsResolver\OptionsResolver;
 
 /**
  * @author Arkadiusz Krakowiak <arkadiusz.krakowiak@lakion.com>
@@ -62,5 +63,18 @@ final class SearchType extends AbstractType implements DataTransformerInterface
         }
 
         return new SearchPhrase($value);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function configureOptions(OptionsResolver $resolver)
+    {
+        $resolver
+            ->setDefined('taxon')
+            ->setAllowedTypes('taxon', 'string')
+            ->setDefined('locale')
+            ->setAllowedTypes('locale', 'string')
+        ;
     }
 }

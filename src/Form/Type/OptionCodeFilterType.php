@@ -41,7 +41,7 @@ final class OptionCodeFilterType extends AbstractType implements DataTransformer
     /**
      * @var QueryFactoryInterface
      */
-    private $productHasOptionCodeQueryFactory;
+    private $productHasOptionCodeAndTaxonsQueryFactory;
 
     /**
      * @var string
@@ -60,23 +60,23 @@ final class OptionCodeFilterType extends AbstractType implements DataTransformer
 
     /**
      * @param RepositoryManagerInterface $repositoryManager
-     * @param QueryFactoryInterface      $productHasOptionCodeQueryFactory
+     * @param QueryFactoryInterface      $productHasOptionCodeAndTaxonsQueryFactory
      * @param SearchFactoryInterface     $searchFactory
      * @param string                     $productModelClass
      * @param EntityRepository           $productOptionValueRepository
      */
     public function __construct(
         RepositoryManagerInterface $repositoryManager,
-        QueryFactoryInterface $productHasOptionCodeQueryFactory,
+        QueryFactoryInterface $productHasOptionCodeAndTaxonsQueryFactory,
         SearchFactoryInterface $searchFactory,
         $productModelClass,
         EntityRepository $productOptionValueRepository
     ) {
-        $this->repositoryManager                = $repositoryManager;
-        $this->productHasOptionCodeQueryFactory = $productHasOptionCodeQueryFactory;
-        $this->searchFactory                    = $searchFactory;
-        $this->productModelClass                = $productModelClass;
-        $this->productOptionValueRepository     = $productOptionValueRepository;
+        $this->repositoryManager                         = $repositoryManager;
+        $this->productHasOptionCodeAndTaxonsQueryFactory = $productHasOptionCodeAndTaxonsQueryFactory;
+        $this->searchFactory                             = $searchFactory;
+        $this->productModelClass                         = $productModelClass;
+        $this->productOptionValueRepository              = $productOptionValueRepository;
     }
 
     /**
@@ -84,50 +84,51 @@ final class OptionCodeFilterType extends AbstractType implements DataTransformer
      */
     public function buildForm(FormBuilderInterface $builder, array $options)
     {
-        /** @var ProductOptionValueInterface $optionValues */
-        $optionValues =
+        /** @var ProductOptionValueInterface[] $optionValuesUnfiltered */
+        $optionValuesUnfiltered =
             $this
                 ->productOptionValueRepository
                 ->createQueryBuilder('o')
+                ->addSelect('translation')
                 ->leftJoin('o.option', 'option')
+                ->innerJoin('o.translations', 'translation', 'WITH', 'translation.locale = :locale')
                 ->andWhere('option.code = :optionCode')
                 ->setParameter('optionCode', $options['option_code'])
+                ->setParameter('locale', $options['locale'])
                 ->getQuery()
                 ->getResult()
         ;
 
+        $aggregatedQuery = $this->buildAggregation($optionValuesUnfiltered, $options['taxon'])->toArray();
+        /** @var Repository $repository */
+        $repository   = $this->repositoryManager->getRepository($this->productModelClass);
+        $result       = $repository->createPaginatorAdapter($aggregatedQuery);
+        $aggregations = $result->getAggregations();
+
+        /** @var ProductOptionValueInterface[] $optionValues */
+        $optionValues = [];
+        foreach ($optionValuesUnfiltered as $optionValue) {
+            $codeCount  = (int)$aggregations[$optionValue->getCode()]['buckets']['code']['doc_count'];
+            if ($codeCount > 0) {
+                $optionValues[] = $optionValue;
+            }
+        }
+        unset($optionValuesUnfiltered);
 
         $builder->add(
             'code',
             EntityType::class,
             [
-                'class'         => $options['class'],
-                'choice_value'  => function (ProductOptionValue $productOptionValue) {
+                'class'        => $options['class'],
+                'choice_value' => function (ProductOptionValue $productOptionValue) {
                     return $productOptionValue->getCode();
                 },
-//                'choices' => $optionValues,
-                'query_builder' => function (EntityRepository $repository) use ($options) {
-                    $queryBuilder = $repository->createQueryBuilder('o');
-
-                    return $queryBuilder
-                        ->leftJoin('o.option', 'option')
-                        ->andWhere('option.code = :optionCode')
-                        ->setParameter('optionCode', $options['option_code'])
-                        ;
+                'choices'      => $optionValues,
+                'choice_label' => function (ProductOptionValue $productOptionValue) use ($options) {
+                    return $productOptionValue->getValue();
                 },
-                'choice_label'  => function (ProductOptionValue $productOptionValue) use ($options) {
-                    /** @var Repository $repository */
-                    $repository  = $this->repositoryManager->getRepository($this->productModelClass);
-                    $query       = $this->buildAggregation($productOptionValue->getCode())->toArray();
-                    $result      = $repository->createPaginatorAdapter($query);
-                    $aggregation = $result->getAggregations();
-                    $count       = $aggregation[$productOptionValue->getCode()]['buckets'][$productOptionValue->getCode(
-                    )]['doc_count'];
-
-                    return sprintf('%s (%s)', $productOptionValue->getValue(), $count);
-                },
-                'multiple'      => true,
-                'expanded'      => true,
+                'multiple'     => true,
+                'expanded'     => true,
             ]
         );
 
@@ -135,21 +136,29 @@ final class OptionCodeFilterType extends AbstractType implements DataTransformer
     }
 
     /**
-     * @param string $code
+     * @param ProductOptionValueInterface[] $optionValues
+     * @param string                        $taxon
      *
      * @return Search
      */
-    private function buildAggregation($code)
+    private function buildAggregation($optionValues, $taxon)
     {
-        $hasOptionValueAggregation = new FiltersAggregation($code);
-
-        $hasOptionValueAggregation->addFilter(
-            $this->productHasOptionCodeQueryFactory->create(['option_value_code' => $code]),
-            $code
-        );
-
         $aggregationSearch = $this->searchFactory->create();
-        $aggregationSearch->addAggregation($hasOptionValueAggregation);
+        foreach ($optionValues as $optionValue) {
+            $hasOptionValueAggregation = new FiltersAggregation($optionValue->getCode());
+
+            $hasOptionValueAggregation->addFilter(
+                $this->productHasOptionCodeAndTaxonsQueryFactory->create(
+                    [
+                        'option_value_code' => $optionValue->getCode(),
+                        'taxon_code'        => $taxon,
+                    ]
+                ),
+                'code'
+            );
+
+            $aggregationSearch->addAggregation($hasOptionValueAggregation);
+        }
 
         return $aggregationSearch;
     }
@@ -163,6 +172,10 @@ final class OptionCodeFilterType extends AbstractType implements DataTransformer
             ->setDefault('class', ProductOptionValue::class)
             ->setRequired('option_code')
             ->setAllowedTypes('option_code', 'string')
+            ->setDefined('taxon')
+            ->setAllowedTypes('taxon', 'string')
+            ->setDefined('locale')
+            ->setAllowedTypes('locale', 'string')
         ;
     }
 

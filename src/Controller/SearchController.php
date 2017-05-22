@@ -72,12 +72,12 @@ final class SearchController
         TaxonRepositoryInterface $taxonRepository,
         ShopperContextInterface $shopperContext
     ) {
-        $this->restViewHandler              = $restViewHandler;
-        $this->searchEngine                 = $searchEngine;
-        $this->formFactory                  = $formFactory;
-        $this->taxonRepository              = $taxonRepository;
-        $this->shopperContext               = $shopperContext;
-        $this->shopperContext               = $shopperContext;
+        $this->restViewHandler = $restViewHandler;
+        $this->searchEngine    = $searchEngine;
+        $this->formFactory     = $formFactory;
+        $this->taxonRepository = $taxonRepository;
+        $this->shopperContext  = $shopperContext;
+        $this->shopperContext  = $shopperContext;
     }
 
     /**
@@ -213,7 +213,9 @@ final class SearchController
                 ]
             ),
             [
-                'filter_set'     => $taxon->getCode()
+                'filter_set' => $taxon->getCode(),
+                'taxon'      => $taxon->getCode(),
+                'locale'     => $locale,
             ]
         );
         $form->handleRequest($request);
@@ -225,7 +227,7 @@ final class SearchController
         $result = $this->searchEngine->match($criteria);
 
         $adapter = new FantaPaginatorAdapter($result);
-        $pager = new Pagerfanta($adapter);
+        $pager   = new Pagerfanta($adapter);
         $pager->setCurrentPage($criteria->getPaginating()->getCurrentPage());
         $pager->setMaxPerPage($criteria->getPaginating()->getItemsPerPage());
         $pager->getCurrentPageResults();
