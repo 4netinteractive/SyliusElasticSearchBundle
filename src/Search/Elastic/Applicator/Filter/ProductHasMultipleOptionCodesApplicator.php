@@ -35,7 +35,7 @@ final class ProductHasMultipleOptionCodesApplicator extends SearchCriteriaApplic
         foreach ($codesFilter->getCodes() as $code) {
             $search->addPostFilter(
                 $this->productHasOptionCodeQueryFactory->create(['option_value_code' => $code]),
-                BoolQuery::SHOULD
+                BoolQuery::MUST
             );
         }
     }
