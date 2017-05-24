@@ -15,6 +15,7 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\EntityRepository;
 use FOS\ElasticaBundle\Manager\RepositoryManagerInterface;
 use FOS\ElasticaBundle\Repository;
+use Lakion\SyliusElasticSearchBundle\Search\Criteria\Filtering\ProductHasAttributeCodesFilter;
 use Lakion\SyliusElasticSearchBundle\Search\Criteria\Filtering\ProductHasOptionCodesFilter;
 use Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Query\QueryFactoryInterface;
 use Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Search\SearchFactoryInterface;
@@ -100,41 +101,43 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
                 ->getQuery()
                 ->getResult()
         ;
-        $optionValuesUnique = [];
+        /** @var ProductAttributeValueInterface[] $optionValuesUniqueEntities */
+        $optionValuesUnique = $optionValuesUniqueEntities = [];
         foreach ($optionValuesUnfiltered as $item) {
             if (!isset($optionValuesUnique[$item->getValue()])) {
-                $optionValuesUnique[$item->getValue()] = $item;
+                $optionValuesUnique[$item->getValue()] = true;
+                $optionValuesUniqueEntities[] = $item;
             }
         }
         unset($optionValuesUnfiltered);
 
-        $aggregatedQuery = $this->buildAggregation($optionValuesUnique, $options['taxon'])->toArray();
-        /** @var Repository $repository */
-        $repository   = $this->repositoryManager->getRepository($this->productModelClass);
-        $result       = $repository->createPaginatorAdapter($aggregatedQuery);
-        $aggregations = $result->getAggregations();
-
-        /** @var ProductAttributeValue[] $optionValues */
-        $optionValues = [];
-        foreach ($optionValuesUnique as $optionValue) {
-            $codeCount = (int)$aggregations[$optionValue->getValue()]['buckets']['code']['doc_count'];
-            if ($codeCount > 0) {
-                $optionValues[] = $optionValue;
-            }
-        }
-        unset($optionValuesUnfiltered);
+//        $aggregatedQuery = $this->buildAggregation($optionValuesUniqueEntities, $options['taxon'])->toArray();
+//        /** @var Repository $repository */
+//        $repository   = $this->repositoryManager->getRepository($this->productModelClass);
+//        $result       = $repository->createPaginatorAdapter($aggregatedQuery);
+//        $aggregations = $result->getAggregations();
+//
+//        /** @var ProductAttributeValueInterface[] $attributeValues */
+//        $attributeValues = [];
+//        foreach ($optionValuesUniqueEntities as $optionValue) {
+//            $codeCount  = (int)$aggregations[$optionValue->getValue()]['buckets']['code']['doc_count'];
+//            if ($codeCount > 0) {
+//                $attributeValues[] = $optionValue;
+//            }
+//        }
 
         $builder->add(
-            'code',
+            'attribute',
             EntityType::class,
             [
                 'class'        => $options['class'],
-                'choice_value' => function (ProductAttributeValue $productOptionValue) {
-                    return $productOptionValue->getValue();
+                'choice_value' => function (ProductAttributeValue $attributeValue) {
+                    return str_replace(['(', ')',' ', '.', '%','/',',','.'], ['_','_', '_','_','_','_','_','_'], $attributeValue->getValue());
                 },
-                'choices'      => $optionValues,
-                'choice_label' => function (ProductAttributeValue $productOptionValue) use ($options) {
-                    return $productOptionValue->getValue();
+                'block_name' => '',
+                'choices'      => $optionValuesUniqueEntities,
+                'choice_label' => function (ProductAttributeValue $attributeValue) use ($options) {
+                    return $attributeValue->getValue();
                 },
                 'multiple'     => true,
                 'expanded'     => true,
@@ -207,8 +210,8 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
     {
         if ($value['code'] instanceof Collection) {
             $productOptionCodes = $value['code']->map(
-                function (ProductOptionValueInterface $productOptionValue) {
-                    return $productOptionValue->getCode();
+                function (ProductAttributeValue $productOptionValue) {
+                    return $productOptionValue->getValue();
                 }
             );
 
@@ -216,9 +219,14 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
                 return null;
             }
 
-            return new ProductHasOptionCodesFilter($productOptionCodes->toArray());
+            return new ProductHasAttributeCodesFilter($productOptionCodes->toArray());
         }
 
         return null;
+    }
+
+    public function getBlockPrefix()
+    {
+        return 'attributes';
     }
 }

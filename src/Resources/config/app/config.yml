@@ -52,7 +52,7 @@ fos_elastica:
                         attributes:
                             type: "nested"
                             properties:
-                                value: { type: string, copy_to: attributes_code }
+                                value: { type: keyword, index: not_analyzed, copy_to: taxon_attributes }
                                 locale_code: { type: keyword, index: not_analyzed }
                                 attribute:
                                     type: "nested"
@@ -68,7 +68,7 @@ fos_elastica:
                                 taxon:
                                     type: "object"
                                     properties:
-                                        code: { type: keyword, index: not_analyzed, copy_to: [taxon_code, attributes_code] }
+                                        code: { type: keyword, index: not_analyzed, copy_to: [taxon_code, taxon_attributes] }
                                         name: { type: string }
                                 position: { type: integer }
                         mainTaxon:

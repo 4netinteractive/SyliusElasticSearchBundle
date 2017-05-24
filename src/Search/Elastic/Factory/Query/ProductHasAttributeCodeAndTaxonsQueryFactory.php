@@ -30,8 +30,8 @@ final class ProductHasAttributeCodeAndTaxonsQueryFactory implements QueryFactory
         }
 
         return new TermQuery(
-            'attributes_code',
-            strtolower($parameters['taxon_code'] . ' ' . $parameters['attribute_value_code'])
+            'taxon_attributes',
+            strtolower($parameters['attribute_value_code'].' '.$parameters['taxon_code'])
         );
     }
 }
