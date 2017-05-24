@@ -20,6 +20,8 @@ use Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Query\QueryFactoryIn
 use Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Search\SearchFactoryInterface;
 use ONGR\ElasticsearchDSL\Aggregation\Bucketing\FiltersAggregation;
 use ONGR\ElasticsearchDSL\Search;
+use Sylius\Component\Product\Model\ProductAttributeValue;
+use Sylius\Component\Product\Model\ProductAttributeValueInterface;
 use Sylius\Component\Product\Model\ProductOptionValue;
 use Sylius\Component\Product\Model\ProductOptionValueInterface;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
@@ -41,7 +43,7 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
     /**
      * @var QueryFactoryInterface
      */
-    private $productHasOptionCodeAndTaxonsQueryFactory;
+    private $productHasAttributeCodeAndTaxonsQueryFactory;
 
     /**
      * @var string
@@ -56,27 +58,27 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
     /**
      * @var EntityRepository
      */
-    private $productOptionValueRepository;
+    private $productAttributeValueRepository;
 
     /**
      * @param RepositoryManagerInterface $repositoryManager
-     * @param QueryFactoryInterface      $productHasOptionCodeAndTaxonsQueryFactory
+     * @param QueryFactoryInterface      $productHasAttributeCodeAndTaxonsQueryFactory
      * @param SearchFactoryInterface     $searchFactory
      * @param string                     $productModelClass
-     * @param EntityRepository           $productOptionValueRepository
+     * @param EntityRepository           $productAttributeValueRepository
      */
     public function __construct(
         RepositoryManagerInterface $repositoryManager,
-        QueryFactoryInterface $productHasOptionCodeAndTaxonsQueryFactory,
+        QueryFactoryInterface $productHasAttributeCodeAndTaxonsQueryFactory,
         SearchFactoryInterface $searchFactory,
         $productModelClass,
-        EntityRepository $productOptionValueRepository
+        EntityRepository $productAttributeValueRepository
     ) {
-        $this->repositoryManager                         = $repositoryManager;
-        $this->productHasOptionCodeAndTaxonsQueryFactory = $productHasOptionCodeAndTaxonsQueryFactory;
-        $this->searchFactory                             = $searchFactory;
-        $this->productModelClass                         = $productModelClass;
-        $this->productOptionValueRepository              = $productOptionValueRepository;
+        $this->repositoryManager                            = $repositoryManager;
+        $this->productHasAttributeCodeAndTaxonsQueryFactory = $productHasAttributeCodeAndTaxonsQueryFactory;
+        $this->searchFactory                                = $searchFactory;
+        $this->productModelClass                            = $productModelClass;
+        $this->productAttributeValueRepository              = $productAttributeValueRepository;
     }
 
     /**
@@ -84,31 +86,38 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
      */
     public function buildForm(FormBuilderInterface $builder, array $options)
     {
-        /** @var ProductOptionValueInterface[] $optionValuesUnfiltered */
+        /** @var ProductAttributeValue[] $optionValuesUnfiltered */
         $optionValuesUnfiltered =
             $this
-                ->productOptionValueRepository
+                ->productAttributeValueRepository
                 ->createQueryBuilder('o')
-                ->addSelect('translation')
-                ->leftJoin('o.option', 'option')
-                ->innerJoin('o.translations', 'translation', 'WITH', 'translation.locale = :locale')
-                ->andWhere('option.code = :optionCode')
-                ->setParameter('optionCode', $options['option_code'])
+                ->distinct(true)
+                ->leftJoin('o.attribute', 'attribute')
+                ->andWhere('attribute.code = :attributeCode')
+                ->andWhere('o.localeCode = :locale')
+                ->setParameter('attributeCode', $options['attribute_code'])
                 ->setParameter('locale', $options['locale'])
                 ->getQuery()
                 ->getResult()
         ;
+        $optionValuesUnique = [];
+        foreach ($optionValuesUnfiltered as $item) {
+            if (!isset($optionValuesUnique[$item->getValue()])) {
+                $optionValuesUnique[$item->getValue()] = $item;
+            }
+        }
+        unset($optionValuesUnfiltered);
 
-        $aggregatedQuery = $this->buildAggregation($optionValuesUnfiltered, $options['taxon'])->toArray();
+        $aggregatedQuery = $this->buildAggregation($optionValuesUnique, $options['taxon'])->toArray();
         /** @var Repository $repository */
         $repository   = $this->repositoryManager->getRepository($this->productModelClass);
         $result       = $repository->createPaginatorAdapter($aggregatedQuery);
         $aggregations = $result->getAggregations();
 
-        /** @var ProductOptionValueInterface[] $optionValues */
+        /** @var ProductAttributeValue[] $optionValues */
         $optionValues = [];
-        foreach ($optionValuesUnfiltered as $optionValue) {
-            $codeCount  = (int)$aggregations[$optionValue->getCode()]['buckets']['code']['doc_count'];
+        foreach ($optionValuesUnique as $optionValue) {
+            $codeCount = (int)$aggregations[$optionValue->getValue()]['buckets']['code']['doc_count'];
             if ($codeCount > 0) {
                 $optionValues[] = $optionValue;
             }
@@ -120,11 +129,11 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
             EntityType::class,
             [
                 'class'        => $options['class'],
-                'choice_value' => function (ProductOptionValue $productOptionValue) {
-                    return $productOptionValue->getCode();
+                'choice_value' => function (ProductAttributeValue $productOptionValue) {
+                    return $productOptionValue->getValue();
                 },
                 'choices'      => $optionValues,
-                'choice_label' => function (ProductOptionValue $productOptionValue) use ($options) {
+                'choice_label' => function (ProductAttributeValue $productOptionValue) use ($options) {
                     return $productOptionValue->getValue();
                 },
                 'multiple'     => true,
@@ -136,8 +145,8 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
     }
 
     /**
-     * @param ProductOptionValueInterface[] $optionValues
-     * @param string                        $taxon
+     * @param ProductAttributeValueInterface[] $optionValues
+     * @param string                           $taxon
      *
      * @return Search
      */
@@ -145,12 +154,12 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
     {
         $aggregationSearch = $this->searchFactory->create();
         foreach ($optionValues as $optionValue) {
-            $hasOptionValueAggregation = new FiltersAggregation($optionValue->getCode());
+            $hasOptionValueAggregation = new FiltersAggregation($optionValue->getValue());
 
             $hasOptionValueAggregation->addFilter(
-                $this->productHasOptionCodeAndTaxonsQueryFactory->create(
+                $this->productHasAttributeCodeAndTaxonsQueryFactory->create(
                     [
-                        'option_value_code' => $optionValue->getCode(),
+                        'attribute_value_code' => $optionValue->getValue(),
                         'taxon_code'        => $taxon,
                     ]
                 ),
@@ -170,8 +179,8 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
     {
         $resolver
             ->setDefault('class', ProductOptionValue::class)
-            ->setRequired('option_code')
-            ->setAllowedTypes('option_code', 'string')
+            ->setRequired('attribute_code')
+            ->setAllowedTypes('attribute_code', 'string')
             ->setDefined('taxon')
             ->setAllowedTypes('taxon', 'string')
             ->setDefined('locale')

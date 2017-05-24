@@ -11,27 +11,27 @@ namespace Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Query;
 use Lakion\SyliusElasticSearchBundle\Exception\MissingQueryParameterException;
 use ONGR\ElasticsearchDSL\Query\TermLevel\TermQuery;
 /**
- * Class ProductHasOptionCodeAndTaxonsQueryFactory
+ * Class ProductHasAttributeCodeAndTaxonsQueryFactory
  * @package Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Query
  * @author  Arvids Godjuks <arvids.godjuks@gmail.com>
  */
-final class ProductHasOptionCodeAndTaxonsQueryFactory implements QueryFactoryInterface
+final class ProductHasAttributeCodeAndTaxonsQueryFactory implements QueryFactoryInterface
 {
     /**
      * {@inheritdoc}
      */
     public function create(array $parameters = [])
     {
-        if (!isset($parameters['option_value_code'])) {
-            throw new MissingQueryParameterException('option_value_code', get_class($this));
+        if (!isset($parameters['attribute_value_code'])) {
+            throw new MissingQueryParameterException('attribute_value_code', get_class($this));
         }
         if (!isset($parameters['taxon_code'])) {
             throw new MissingQueryParameterException('taxon_code', get_class($this));
         }
 
         return new TermQuery(
-            'taxon_code',
-            strtolower($parameters['taxon_code'] . ' ' . $parameters['option_value_code'])
+            'attributes_code',
+            strtolower($parameters['taxon_code'] . ' ' . $parameters['attribute_value_code'])
         );
     }
 }

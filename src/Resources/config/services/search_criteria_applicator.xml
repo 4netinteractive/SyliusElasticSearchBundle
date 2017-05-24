@@ -37,5 +37,11 @@
             <argument type="service" id="lakion_sylius_elastic_search.query_factory.product_has_option_code" />
             <tag name="search_criteria_applicator" applies="Lakion\SyliusElasticSearchBundle\Search\Criteria\Filtering\ProductInCodeTaxonFilter" />
         </service>
+        <service id="lakion_sylius_elastic_search.search_criteria_applicator.product_in_attribute_taxon" class="Lakion\SyliusElasticSearchBundle\Search\Elastic\Applicator\Filter\ProductInAttributeAndTaxonApplicator">
+            <argument type="service" id="lakion_sylius_elastic_search.query_factory.product_in_main_taxon" />
+            <argument type="service" id="lakion_sylius_elastic_search.query_factory.product_in_product_taxons" />
+            <argument type="service" id="lakion_sylius_elastic_search.query_factory.product_has_option_code" />
+            <tag name="search_criteria_applicator" applies="Lakion\SyliusElasticSearchBundle\Search\Criteria\Filtering\ProductInCodeTaxonFilter" />
+        </service>
     </services>
 </container>

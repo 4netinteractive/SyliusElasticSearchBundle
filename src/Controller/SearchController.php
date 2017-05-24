@@ -97,6 +97,7 @@ final class SearchController
             Criteria::fromQueryParameters(
                 $this->getResourceClassFromRequest($request),
                 [
+                    'page' => $request->get('page'),
                     'per_page' => $request->get('per_page'),
                     new ProductInChannelFilter($this->shopperContext->getChannel()->getCode()),
                 ]
@@ -108,21 +109,23 @@ final class SearchController
         /** @var Criteria $criteria */
         $criteria = $form->getData();
 
-        $result        = $this->searchEngine->match($criteria);
-        $partialResult = $result->getResults(
-            $criteria->getPaginating()->getOffset(),
-            $criteria->getPaginating()->getItemsPerPage()
-        );
+        /** @var PaginatorAdapterInterface $result */
+        $result = $this->searchEngine->match($criteria);
 
-        $pager = new Pagerfanta(new FantaPaginatorAdapter($result));
-        $pager->setCurrentPage($criteria->getPaginating()->getCurrentPage());
+        $adapter = new FantaPaginatorAdapter($result);
+        $pager   = new Pagerfanta($adapter);
+        $pager->setNormalizeOutOfRangePages(false);
+        $pager->setAllowOutOfRangePages(true);
         $pager->setMaxPerPage($criteria->getPaginating()->getItemsPerPage());
+        $pager->setCurrentPage($criteria->getPaginating()->getCurrentPage());
+
+        $pager->getCurrentPageResults();
 
         $view->setData(
             [
-                'products' => $partialResult->toArray(),
-                'form'     => $form->createView(),
-                'criteria' => $criteria,
+                'resources' => ['data' => $pager],
+                'form'      => $form->createView(),
+                'criteria'  => $criteria,
             ]
         );
 
@@ -207,6 +210,7 @@ final class SearchController
             Criteria::fromQueryParameters(
                 $this->getResourceClassFromRequest($request),
                 [
+                    'page' => $request->get('page'),
                     'per_page' => $request->get('per_page'),
                     new ProductInTaxonFilter($taxon->getCode()),
                     new ProductInChannelFilter($this->shopperContext->getChannel()->getCode()),
@@ -218,18 +222,23 @@ final class SearchController
                 'locale'     => $locale,
             ]
         );
+
         $form->handleRequest($request);
 
         /** @var Criteria $criteria */
         $criteria = $form->getData();
+
 
         /** @var PaginatorAdapterInterface $result */
         $result = $this->searchEngine->match($criteria);
 
         $adapter = new FantaPaginatorAdapter($result);
         $pager   = new Pagerfanta($adapter);
-        $pager->setCurrentPage($criteria->getPaginating()->getCurrentPage());
+        $pager->setNormalizeOutOfRangePages(false);
+        $pager->setAllowOutOfRangePages(true);
         $pager->setMaxPerPage($criteria->getPaginating()->getItemsPerPage());
+        $pager->setCurrentPage($criteria->getPaginating()->getCurrentPage());
+
         $pager->getCurrentPageResults();
 
         $view->setData(
@@ -237,7 +246,6 @@ final class SearchController
                 'resources' => ['data' => $pager],
                 'form'      => $form->createView(),
                 'criteria'  => $criteria,
-                //'pagerfanta' => $pager
             ]
         );
 
