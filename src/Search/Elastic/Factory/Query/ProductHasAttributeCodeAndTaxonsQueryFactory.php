@@ -9,7 +9,10 @@
 namespace Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Query;
 
 use Lakion\SyliusElasticSearchBundle\Exception\MissingQueryParameterException;
+use ONGR\ElasticsearchDSL\Query\Joining\NestedQuery;
 use ONGR\ElasticsearchDSL\Query\TermLevel\TermQuery;
+use ONGR\ElasticsearchDSL\Query\TermLevel\TermsQuery;
+
 /**
  * Class ProductHasAttributeCodeAndTaxonsQueryFactory
  * @package Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Query
@@ -29,9 +32,11 @@ final class ProductHasAttributeCodeAndTaxonsQueryFactory implements QueryFactory
             throw new MissingQueryParameterException('taxon_code', get_class($this));
         }
 
-        return new TermQuery(
-            'taxon_attributes',
-            strtolower($parameters['attribute_value_code'].' '.$parameters['taxon_code'])
+        return new NestedQuery(
+            'attributes',
+            new TermQuery(
+                'attributes.value', $parameters['attribute_value_code']
+            )
         );
     }
 }

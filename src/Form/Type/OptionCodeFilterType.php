@@ -19,6 +19,7 @@ use Lakion\SyliusElasticSearchBundle\Search\Criteria\Filtering\ProductHasOptionC
 use Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Query\QueryFactoryInterface;
 use Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Search\SearchFactoryInterface;
 use ONGR\ElasticsearchDSL\Aggregation\Bucketing\FiltersAggregation;
+use ONGR\ElasticsearchDSL\Query\Compound\BoolQuery;
 use ONGR\ElasticsearchDSL\Search;
 use Sylius\Component\Product\Model\ProductOptionValue;
 use Sylius\Component\Product\Model\ProductOptionValueInterface;
@@ -59,24 +60,33 @@ final class OptionCodeFilterType extends AbstractType implements DataTransformer
     private $productOptionValueRepository;
 
     /**
+     * @var QueryFactoryInterface
+     */
+    private $productInProductTaxonsQueryFactory;
+
+    /**
      * @param RepositoryManagerInterface $repositoryManager
      * @param QueryFactoryInterface      $productHasOptionCodeAndTaxonsQueryFactory
      * @param SearchFactoryInterface     $searchFactory
      * @param string                     $productModelClass
      * @param EntityRepository           $productOptionValueRepository
+     * @param QueryFactoryInterface      $productInProductTaxonsQueryFactory
      */
     public function __construct(
         RepositoryManagerInterface $repositoryManager,
         QueryFactoryInterface $productHasOptionCodeAndTaxonsQueryFactory,
         SearchFactoryInterface $searchFactory,
         $productModelClass,
-        EntityRepository $productOptionValueRepository
+        EntityRepository $productOptionValueRepository,
+        $productInProductTaxonsQueryFactory
+
     ) {
         $this->repositoryManager                         = $repositoryManager;
         $this->productHasOptionCodeAndTaxonsQueryFactory = $productHasOptionCodeAndTaxonsQueryFactory;
         $this->searchFactory                             = $searchFactory;
         $this->productModelClass                         = $productModelClass;
         $this->productOptionValueRepository              = $productOptionValueRepository;
+        $this->productInProductTaxonsQueryFactory        = $productInProductTaxonsQueryFactory;
     }
 
     /**
@@ -95,6 +105,7 @@ final class OptionCodeFilterType extends AbstractType implements DataTransformer
                 ->andWhere('option.code = :optionCode')
                 ->setParameter('optionCode', $options['option_code'])
                 ->setParameter('locale', $options['locale'])
+                ->addOrderBy('translation.value', 'ASC')
                 ->getQuery()
                 ->getResult()
         ;
@@ -108,7 +119,7 @@ final class OptionCodeFilterType extends AbstractType implements DataTransformer
         /** @var ProductOptionValueInterface[] $optionValues */
         $optionValues = [];
         foreach ($optionValuesUnfiltered as $optionValue) {
-            $codeCount  = (int)$aggregations[$optionValue->getCode()]['buckets']['code']['doc_count'];
+            $codeCount = (int)$aggregations[$optionValue->getCode()]['buckets']['code']['doc_count'];
             if ($codeCount > 0) {
                 $optionValues[] = $optionValue;
             }
@@ -143,7 +154,13 @@ final class OptionCodeFilterType extends AbstractType implements DataTransformer
      */
     private function buildAggregation($optionValues, $taxon)
     {
-        $aggregationSearch = $this->searchFactory->create();
+        $search = $this->searchFactory->create();
+
+        $search->addPostFilter(
+            $this->productInProductTaxonsQueryFactory->create(['taxon_code' => $taxon]),
+            BoolQuery::MUST
+        );
+
         foreach ($optionValues as $optionValue) {
             $hasOptionValueAggregation = new FiltersAggregation($optionValue->getCode());
 
@@ -157,10 +174,10 @@ final class OptionCodeFilterType extends AbstractType implements DataTransformer
                 'code'
             );
 
-            $aggregationSearch->addAggregation($hasOptionValueAggregation);
+            $search->addAggregation($hasOptionValueAggregation);
         }
 
-        return $aggregationSearch;
+        return $search;
     }
 
     /**
