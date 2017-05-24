@@ -230,8 +230,8 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
      */
     public function reverseTransform($value)
     {
-        if ($value['code'] instanceof Collection) {
-            $productOptionCodes = $value['code']->map(
+        if ($value['attribute'] instanceof Collection) {
+            $productOptionCodes = $value['attribute']->map(
                 function (ProductAttributeValue $productOptionValue) {
                     return $productOptionValue->getValue();
                 }
