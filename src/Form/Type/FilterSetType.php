@@ -59,9 +59,6 @@ final class FilterSetType extends AbstractType
             $filters = $this->filterSetConfigurationProvider->getFilterSetConfiguration('default')->getFilters();
         }
 
-
-        dump($filters);
-
         foreach ($filters as $filter) {
             $builder->add(
                 $filter->getName(),
