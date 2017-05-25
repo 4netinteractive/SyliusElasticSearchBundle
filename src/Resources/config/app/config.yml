@@ -24,8 +24,6 @@ fos_elastica:
                         description: { type: string }
                         shortDescription: { type: string }
                         slug: { type: string }
-                        taxon_code: {type: keyword, store: yes, property_path: false}
-                        taxon_attributes: {type: keyword, store: yes, property_path: false}
                         translations:
                             type: "nested"
                             properties:
@@ -50,11 +48,11 @@ fos_elastica:
                                     properties:
                                         name: { type: string }
                                         value: { type: string }
-                                        code: { type: keyword, index: not_analyzed, copy_to: taxon_code }
+                                        code: { type: keyword, index: not_analyzed }
                         attributes:
                             type: "nested"
                             properties:
-                                value: { type: keyword, index: not_analyzed, copy_to: taxon_attributes }
+                                value: { type: keyword, index: not_analyzed }
                                 locale_code: { type: keyword, index: not_analyzed }
                                 attribute:
                                     type: "nested"
@@ -70,7 +68,7 @@ fos_elastica:
                                 taxon:
                                     type: "object"
                                     properties:
-                                        code: { type: keyword, index: not_analyzed, copy_to: [taxon_code, taxon_attributes] }
+                                        code: { type: keyword, index: not_analyzed }
                                         name: { type: string }
                                 position: { type: integer }
                         mainTaxon:

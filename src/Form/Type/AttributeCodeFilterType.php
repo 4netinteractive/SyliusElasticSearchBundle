@@ -141,16 +141,15 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
             [
                 'class'        => $options['class'],
                 'choice_value' => function (ProductAttributeValue $attributeValue) {
-                    return str_replace(
-                        ['(', ')', ' ', '.', '%', '/', ',', '.'],
-                        ['_', '_', '_', '_', '_', '_', '_', '_'],
-                        $attributeValue->getValue()
-                    );
+                    return $attributeValue->getValue();
                 },
                 'block_name'   => '',
                 'choices'      => $attributeValues,
                 'choice_label' => function (ProductAttributeValue $attributeValue) use ($options) {
                     return $attributeValue->getValue();
+                },
+                'choice_name' => function (ProductAttributeValue $attributeValue) {
+                    return $attributeValue->getCode().'-'.$attributeValue->getId();
                 },
                 'multiple'     => true,
                 'expanded'     => true,
@@ -206,11 +205,6 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
             ->setDefined('locale')
             ->setAllowedTypes('locale', 'string')
         ;
-    }
-
-    public function getBlockPrefix()
-    {
-        return 'attributes';
     }
 
     /**

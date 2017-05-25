@@ -2,7 +2,7 @@
 
 namespace Lakion\SyliusElasticSearchBundle\Search\Elastic\Applicator\Filter;
 
-use Lakion\SyliusElasticSearchBundle\Search\Criteria\Filtering\ProductHasOptionCodesFilter;
+use Lakion\SyliusElasticSearchBundle\Search\Criteria\Filtering\ProductHasAttributeCodesFilter;
 use Lakion\SyliusElasticSearchBundle\Search\Elastic\Applicator\SearchCriteriaApplicator;
 use Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Query\QueryFactoryInterface;
 use ONGR\ElasticsearchDSL\Query\Compound\BoolQuery;
@@ -27,10 +27,10 @@ final class ProductHasMultipleAttributeCodesApplicator extends SearchCriteriaApp
     }
 
     /**
-     * @param ProductHasOptionCodesFilter $codesFilter
+     * @param ProductHasAttributeCodesFilter $codesFilter
      * @param Search $search
      */
-    public function applyProductHasOptionCodesFilter(ProductHasOptionCodesFilter $codesFilter, Search $search)
+    public function applyProductHasAttributeCodesFilter(ProductHasAttributeCodesFilter $codesFilter, Search $search)
     {
         foreach ($codesFilter->getCodes() as $code) {
             $search->addPostFilter(

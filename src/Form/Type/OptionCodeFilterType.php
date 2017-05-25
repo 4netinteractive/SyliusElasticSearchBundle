@@ -20,6 +20,8 @@ use Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Query\QueryFactoryIn
 use Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Search\SearchFactoryInterface;
 use ONGR\ElasticsearchDSL\Aggregation\Bucketing\FiltersAggregation;
 use ONGR\ElasticsearchDSL\Query\Compound\BoolQuery;
+use ONGR\ElasticsearchDSL\Query\Joining\NestedQuery;
+use ONGR\ElasticsearchDSL\Query\TermLevel\TermQuery;
 use ONGR\ElasticsearchDSL\Search;
 use Sylius\Component\Product\Model\ProductOptionValue;
 use Sylius\Component\Product\Model\ProductOptionValueInterface;
@@ -110,7 +112,7 @@ final class OptionCodeFilterType extends AbstractType implements DataTransformer
                 ->getResult()
         ;
 
-        $aggregatedQuery = $this->buildAggregation($optionValuesUnfiltered, $options['taxon'])->toArray();
+        $aggregatedQuery = $this->buildAggregation($optionValuesUnfiltered, $options)->toArray();
         /** @var Repository $repository */
         $repository   = $this->repositoryManager->getRepository($this->productModelClass);
         $result       = $repository->createPaginatorAdapter($aggregatedQuery);
@@ -148,18 +150,27 @@ final class OptionCodeFilterType extends AbstractType implements DataTransformer
 
     /**
      * @param ProductOptionValueInterface[] $optionValues
-     * @param string                        $taxon
+     * @param array                         $options
      *
      * @return Search
      */
-    private function buildAggregation($optionValues, $taxon)
+    private function buildAggregation($optionValues, $options)
     {
         $search = $this->searchFactory->create();
 
         $search->addPostFilter(
-            $this->productInProductTaxonsQueryFactory->create(['taxon_code' => $taxon]),
+            $this->productInProductTaxonsQueryFactory->create(['taxon_code' => strtolower($options['taxon'])]),
             BoolQuery::MUST
         );
+
+        $search->addPostFilter(
+            new NestedQuery(
+                'productTaxons',
+                new TermQuery('productTaxons.taxon.code', strtolower($options['taxon']))
+            ),
+            BoolQuery::MUST
+        );
+
 
         foreach ($optionValues as $optionValue) {
             $hasOptionValueAggregation = new FiltersAggregation($optionValue->getCode());
@@ -168,7 +179,7 @@ final class OptionCodeFilterType extends AbstractType implements DataTransformer
                 $this->productHasOptionCodeAndTaxonsQueryFactory->create(
                     [
                         'option_value_code' => $optionValue->getCode(),
-                        'taxon_code'        => $taxon,
+                        'taxon_code'        => $options['taxon'],
                     ]
                 ),
                 'code'
