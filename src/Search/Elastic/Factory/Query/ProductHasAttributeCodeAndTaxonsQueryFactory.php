@@ -54,12 +54,9 @@ final class ProductHasAttributeCodeAndTaxonsQueryFactory implements QueryFactory
         );
         $boolQuery->add(
             new NestedQuery(
-                'attributes',
-                new NestedQuery(
-                    'attributes.attribute',
-                    new TermQuery(
-                        'attributes.attribute.code', $parameters['attribute_code']
-                    )
+            'attributes',
+                new TermQuery(
+                    'attributes.attribute.code', $parameters['attribute_code']
                 )
             )
         );
