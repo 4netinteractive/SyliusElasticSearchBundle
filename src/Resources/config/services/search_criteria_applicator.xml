@@ -47,5 +47,9 @@
             <argument type="service" id="lakion_sylius_elastic_search.query_factory.product_has_attribute_code" />
             <tag name="search_criteria_applicator" applies="Lakion\SyliusElasticSearchBundle\Search\Criteria\Filtering\ProductInCodeTaxonFilter" />
         </service>
+        <service id="lakion_sylius_elastic_search.search_criteria_applicator.product_is_enabled" class="Lakion\SyliusElasticSearchBundle\Search\Elastic\Applicator\Filter\ProductIsEnabledApplicator">
+            <argument type="service" id="lakion_sylius_elastic_search.query_factory.product_is_enabled" />
+            <tag name="search_criteria_applicator" applies="Lakion\SyliusElasticSearchBundle\Search\Criteria\Filtering\ProductIsEnabledFilter" />
+        </service>
     </services>
 </container>

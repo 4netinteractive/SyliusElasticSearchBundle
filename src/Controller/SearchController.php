@@ -19,6 +19,7 @@ use Lakion\SyliusElasticSearchBundle\Form\Type\FilterSetType;
 use Lakion\SyliusElasticSearchBundle\Search\Criteria\Criteria;
 use Lakion\SyliusElasticSearchBundle\Search\Criteria\Filtering\ProductInChannelFilter;
 use Lakion\SyliusElasticSearchBundle\Search\Criteria\Filtering\ProductInTaxonFilter;
+use Lakion\SyliusElasticSearchBundle\Search\Criteria\Filtering\ProductIsEnabledFilter;
 use Lakion\SyliusElasticSearchBundle\Search\SearchEngineInterface;
 use Pagerfanta\Pagerfanta;
 use Sylius\Component\Core\Context\ShopperContextInterface;
@@ -99,6 +100,7 @@ final class SearchController
                 [
                     'page' => $request->get('page'),
                     'per_page' => $request->get('per_page'),
+                    new ProductIsEnabledFilter(true),
                     new ProductInChannelFilter($this->shopperContext->getChannel()->getCode()),
                 ]
             ),
@@ -212,6 +214,7 @@ final class SearchController
                 [
                     'page' => $request->get('page'),
                     'per_page' => $request->get('per_page'),
+                    new ProductIsEnabledFilter(true),
                     new ProductInTaxonFilter($taxon->getCode()),
                     new ProductInChannelFilter($this->shopperContext->getChannel()->getCode()),
                 ]
