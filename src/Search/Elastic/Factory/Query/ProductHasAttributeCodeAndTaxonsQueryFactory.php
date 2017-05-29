@@ -9,9 +9,9 @@
 namespace Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Query;
 
 use Lakion\SyliusElasticSearchBundle\Exception\MissingQueryParameterException;
+use ONGR\ElasticsearchDSL\Query\Compound\BoolQuery;
 use ONGR\ElasticsearchDSL\Query\Joining\NestedQuery;
 use ONGR\ElasticsearchDSL\Query\TermLevel\TermQuery;
-use ONGR\ElasticsearchDSL\Query\TermLevel\TermsQuery;
 
 /**
  * Class ProductHasAttributeCodeAndTaxonsQueryFactory
@@ -25,18 +25,45 @@ final class ProductHasAttributeCodeAndTaxonsQueryFactory implements QueryFactory
      */
     public function create(array $parameters = [])
     {
-        if (!isset($parameters['attribute_value_code'])) {
-            throw new MissingQueryParameterException('attribute_value_code', get_class($this));
+        if (!isset($parameters['attribute_value'])) {
+            throw new MissingQueryParameterException('attribute_value', get_class($this));
+        }
+        if (!isset($parameters['attribute_code'])) {
+            throw new MissingQueryParameterException('attribute_code', get_class($this));
         }
         if (!isset($parameters['taxon_code'])) {
             throw new MissingQueryParameterException('taxon_code', get_class($this));
         }
 
-        return new NestedQuery(
-            'attributes',
-            new TermQuery(
-                'attributes.value', $parameters['attribute_value_code']
+        $boolQuery = new BoolQuery();
+
+        $boolQuery->add(
+            new NestedQuery(
+                'productTaxons',
+                new TermQuery('productTaxons.taxon.code', strtolower($parameters['taxon_code']))
             )
         );
+
+        $boolQuery->add(
+            new NestedQuery(
+                'attributes',
+                new TermQuery(
+                    'attributes.value', $parameters['attribute_value']
+                )
+            )
+        );
+        $boolQuery->add(
+            new NestedQuery(
+                'attributes',
+                new NestedQuery(
+                    'attributes.attribute',
+                    new TermQuery(
+                        'attributes.attribute.code', $parameters['attribute_code']
+                    )
+                )
+            )
+        );
+
+        return $boolQuery;
     }
 }

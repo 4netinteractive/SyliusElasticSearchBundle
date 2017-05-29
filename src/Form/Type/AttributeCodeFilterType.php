@@ -11,6 +11,7 @@
 
 namespace Lakion\SyliusElasticSearchBundle\Form\Type;
 
+use AppBundle\Form\AttributeEntityType;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\EntityRepository;
 use FOS\ElasticaBundle\Manager\RepositoryManagerInterface;
@@ -22,10 +23,14 @@ use Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Search\SearchFactory
 use ONGR\ElasticsearchDSL\Aggregation\Bucketing\FiltersAggregation;
 use ONGR\ElasticsearchDSL\Query\Compound\BoolQuery;
 use ONGR\ElasticsearchDSL\Search;
+use Sylius\Component\Attribute\AttributeType\SelectAttributeType;
+use Sylius\Component\Attribute\AttributeType\TextAttributeType;
+use Sylius\Component\Product\Model\ProductAttribute;
 use Sylius\Component\Product\Model\ProductAttributeValue;
 use Sylius\Component\Product\Model\ProductAttributeValueInterface;
 use Sylius\Component\Product\Model\ProductOptionValue;
 use Sylius\Component\Product\Model\ProductOptionValueInterface;
+use Sylius\Component\Resource\Factory\FactoryInterface;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\DataTransformerInterface;
@@ -63,9 +68,19 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
     private $productAttributeValueRepository;
 
     /**
+     * @var EntityRepository
+     */
+    private $productAttributeRepository;
+
+    /**
      * @var QueryFactoryInterface
      */
     private $productInProductTaxonsQueryFactory;
+
+    /**
+     * @var FactoryInterface
+     */
+    private $productAttributeValueFactory;
 
     /**
      * @param RepositoryManagerInterface $repositoryManager
@@ -74,6 +89,8 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
      * @param string                     $productModelClass
      * @param EntityRepository           $productAttributeValueRepository
      * @param QueryFactoryInterface      $productInProductTaxonsQueryFactory
+     * @param EntityRepository           $productAttributeRepository
+     * @param FactoryInterface           $productAttributeValueFactory
      */
     public function __construct(
         RepositoryManagerInterface $repositoryManager,
@@ -81,7 +98,9 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
         SearchFactoryInterface $searchFactory,
         $productModelClass,
         EntityRepository $productAttributeValueRepository,
-        $productInProductTaxonsQueryFactory
+        $productInProductTaxonsQueryFactory,
+        EntityRepository $productAttributeRepository,
+        FactoryInterface $productAttributeValueFactory
     ) {
         $this->repositoryManager                            = $repositoryManager;
         $this->productHasAttributeCodeAndTaxonsQueryFactory = $productHasAttributeCodeAndTaxonsQueryFactory;
@@ -89,6 +108,8 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
         $this->productModelClass                            = $productModelClass;
         $this->productAttributeValueRepository              = $productAttributeValueRepository;
         $this->productInProductTaxonsQueryFactory           = $productInProductTaxonsQueryFactory;
+        $this->productAttributeRepository                   = $productAttributeRepository;
+        $this->productAttributeValueFactory                 = $productAttributeValueFactory;
     }
 
     /**
@@ -96,42 +117,73 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
      */
     public function buildForm(FormBuilderInterface $builder, array $options)
     {
-        /** @var ProductAttributeValue[] $optionValuesUnfiltered */
-        $optionValuesUnfiltered =
-            $this
+        /** @var ProductAttribute $attribute */
+        $attribute = $this->productAttributeRepository->findOneBy(['code' => $options['attribute_code']]);
+
+        /** @var ProductAttributeValueInterface[] $attributeValues */
+        $attributeValues = [];
+
+        if ($attribute->getType() === SelectAttributeType::TYPE) {
+            $query = $this
                 ->productAttributeValueRepository
                 ->createQueryBuilder('o')
-                ->distinct(true)
-                ->leftJoin('o.attribute', 'attribute')
-                ->andWhere('attribute.code = :attributeCode')
+                ->select('o.json')
+                ->distinct()
                 ->andWhere('o.localeCode = :locale')
-                ->setParameter('attributeCode', $options['attribute_code'])
-                ->setParameter('locale', $options['locale'])
+                ->andWhere('o.attribute = :attributeId')
+                ->setParameter(':attributeId', $attribute->getId())
+                ->setParameter(':locale', $options['locale'])
                 ->getQuery()
-                ->getResult()
-        ;
-        /** @var ProductAttributeValueInterface[] $optionValuesUniqueEntities */
-        $optionValuesUnique = $optionValuesUniqueEntities = [];
-        foreach ($optionValuesUnfiltered as $item) {
-            if (!isset($optionValuesUnique[$item->getValue()])) {
-                $optionValuesUnique[$item->getValue()] = true;
-                $optionValuesUniqueEntities[]          = $item;
+            ;
+            foreach ($query->getResult() as $item) {
+                /** @var ProductAttributeValue $entity */
+                $entity = $this->productAttributeValueFactory->createNew();
+                $entity->setAttribute($attribute);
+                $entity->setValue($item['json']);
+                $attributeValues[] = $entity;
             }
-        }
-        unset($optionValuesUnfiltered);
+        } else {
+            /** @var ProductAttributeValue[] $optionValuesUnfiltered */
+            $query =
+                $this
+                    ->productAttributeValueRepository
+                    ->createQueryBuilder('o')
+                    ->select('o.text')
+                    ->distinct(true)
+                    ->leftJoin('o.attribute', 'attribute')
+                    ->andWhere('attribute.code = :attributeCode')
+                    ->andWhere('o.localeCode = :locale')
+                    ->setParameter('attributeCode', $options['attribute_code'])
+                    ->setParameter('locale', $options['locale'])
+                    ->getQuery()
+            ;
+            foreach ($query->getResult() as $item) {
+                /** @var ProductAttributeValue $entity */
+                $entity = $this->productAttributeValueFactory->createNew();
+                $entity->setAttribute($attribute);
+                $entity->setValue($item['text']);
+                $attributeValues[] = $entity;
+            }
 
-        $aggregatedQuery = $this->buildAggregation($optionValuesUniqueEntities, $options['taxon'])->toArray();
+        }
+
+        $aggregatedQuery = $this->buildAggregation($attributeValues, $options)->toArray();
         /** @var Repository $repository */
         $repository   = $this->repositoryManager->getRepository($this->productModelClass);
         $result       = $repository->createPaginatorAdapter($aggregatedQuery);
         $aggregations = $result->getAggregations();
 
         /** @var ProductAttributeValueInterface[] $attributeValues */
-        $attributeValues = [];
-        foreach ($optionValuesUniqueEntities as $optionValue) {
-            $codeCount = (int)$aggregations[$optionValue->getValue()]['buckets']['code']['doc_count'];
+        $attributeValuesFiltered = [];
+        foreach ($attributeValues as $optionValue) {
+            if ($optionValue->getAttribute()->getType() === SelectAttributeType::TYPE) {
+                $value = $optionValue->getValue()[0];
+            } else {
+                $value = $optionValue->getValue();
+            }
+            $codeCount = (int)$aggregations[$value]['buckets']['code']['doc_count'];
             if ($codeCount > 0) {
-                $attributeValues[] = $optionValue;
+                $attributeValuesFiltered[] = $optionValue;
             }
         }
 
@@ -141,15 +193,29 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
             [
                 'class'        => $options['class'],
                 'choice_value' => function (ProductAttributeValue $attributeValue) {
-                    return $attributeValue->getValue();
+                    if ($attributeValue->getAttribute()->getType() === SelectAttributeType::TYPE) {
+                        return $attributeValue->getValue()[0];
+                    } else {
+                        return $attributeValue->getValue();
+                    }
                 },
-                'block_name'   => '',
-                'choices'      => $attributeValues,
-                'choice_label' => function (ProductAttributeValue $attributeValue) use ($options) {
-                    return $attributeValue->getValue();
+                'choices'      => $attributeValuesFiltered,
+                'choice_label' => function (ProductAttributeValue $attributeValue) {
+                    if ($attributeValue->getAttribute()->getType() === SelectAttributeType::TYPE) {
+                        return $attributeValue->getValue()[0];
+                    } else {
+                        return $attributeValue->getValue();
+                    }
                 },
-                'choice_name' => function (ProductAttributeValue $attributeValue) {
-                    return $attributeValue->getCode().'-'.$attributeValue->getId();
+                'choice_name'  => function (ProductAttributeValue $attributeValue) {
+                    return uniqid();
+                },
+                'choice_attr'   => function (ProductAttributeValue $attributeValue) use ($aggregations) {
+                    if ($attributeValue->getAttribute()->getType() === SelectAttributeType::TYPE) {
+                        return ['data' => (int)$aggregations[$attributeValue->getValue()[0]]['buckets']['code']['doc_count']];
+                    } else {
+                        return ['data' => (int)$aggregations[$attributeValue->getValue()]['buckets']['code']['doc_count']];
+                    }
                 },
                 'multiple'     => true,
                 'expanded'     => true,
@@ -161,25 +227,31 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
 
     /**
      * @param ProductAttributeValueInterface[] $optionValues
-     * @param string                           $taxon
+     * @param array                            $options
      *
      * @return Search
      */
-    private function buildAggregation($optionValues, $taxon)
+    private function buildAggregation($optionValues, array $options)
     {
         $search = $this->searchFactory->create();
         $search->addPostFilter(
-            $this->productInProductTaxonsQueryFactory->create(['taxon_code' => $taxon]),
+            $this->productInProductTaxonsQueryFactory->create(['taxon_code' => $options['taxon']]),
             BoolQuery::MUST
         );
         foreach ($optionValues as $optionValue) {
-            $hasOptionValueAggregation = new FiltersAggregation($optionValue->getValue());
+            if ($optionValue->getAttribute()->getType() === SelectAttributeType::TYPE) {
+                $value = $optionValue->getValue()[0];
+            } else {
+                $value = $optionValue->getValue();
+            }
+            $hasOptionValueAggregation = new FiltersAggregation($value);
 
             $hasOptionValueAggregation->addFilter(
                 $this->productHasAttributeCodeAndTaxonsQueryFactory->create(
                     [
-                        'attribute_value_code' => $optionValue->getValue(),
-                        'taxon_code'           => $taxon,
+                        'attribute_value' => $value,
+                        'taxon_code'      => $options['taxon'],
+                        'attribute_code'  => $optionValue->getCode(),
                     ]
                 ),
                 'code'

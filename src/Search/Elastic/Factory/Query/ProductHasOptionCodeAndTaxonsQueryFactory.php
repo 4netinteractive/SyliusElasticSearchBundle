@@ -9,9 +9,9 @@
 namespace Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Query;
 
 use Lakion\SyliusElasticSearchBundle\Exception\MissingQueryParameterException;
+use ONGR\ElasticsearchDSL\Query\Compound\BoolQuery;
 use ONGR\ElasticsearchDSL\Query\Joining\NestedQuery;
 use ONGR\ElasticsearchDSL\Query\TermLevel\TermQuery;
-use ONGR\ElasticsearchDSL\Query\TermLevel\TermsQuery;
 
 /**
  * Class ProductHasOptionCodeAndTaxonsQueryFactory
@@ -32,12 +32,25 @@ final class ProductHasOptionCodeAndTaxonsQueryFactory implements QueryFactoryInt
             throw new MissingQueryParameterException('taxon_code', get_class($this));
         }
 
-        return new NestedQuery(
-            'variants',
+        $boolQuery = new BoolQuery();
+
+        $boolQuery->add(
             new NestedQuery(
-                'variants.optionValues',
-                new TermQuery('variants.optionValues.code', $parameters['option_value_code'])
+                'productTaxons',
+                new TermQuery('productTaxons.taxon.code', strtolower($parameters['taxon_code']))
             )
         );
+
+        $boolQuery->add(
+            new NestedQuery(
+                'variants',
+                new NestedQuery(
+                    'variants.optionValues',
+                    new TermQuery('variants.optionValues.code', $parameters['option_value_code'])
+                )
+            )
+        );
+
+        return $boolQuery;
     }
 }

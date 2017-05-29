@@ -17,14 +17,14 @@ final class ProductHasAttributeCodeQueryFactory implements QueryFactoryInterface
      */
     public function create(array $parameters = [])
     {
-        if (!isset($parameters['attribute_value_code'])) {
-            throw new MissingQueryParameterException('attribute_value_code', get_class($this));
+        if (!isset($parameters['attribute_codes'])) {
+            throw new MissingQueryParameterException('attribute_codes', get_class($this));
         }
 
         return
             new NestedQuery(
                 'attributes',
-                new TermQuery('attributes.value', $parameters['attribute_value_code'])
+                new TermsQuery('attributes.value', $parameters['attribute_codes'])
             );
     }
 }

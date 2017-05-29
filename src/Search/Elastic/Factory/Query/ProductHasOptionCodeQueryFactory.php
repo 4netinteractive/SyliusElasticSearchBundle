@@ -5,6 +5,7 @@ namespace Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Query;
 use Lakion\SyliusElasticSearchBundle\Exception\MissingQueryParameterException;
 use ONGR\ElasticsearchDSL\Query\Joining\NestedQuery;
 use ONGR\ElasticsearchDSL\Query\TermLevel\TermQuery;
+use ONGR\ElasticsearchDSL\Query\TermLevel\TermsQuery;
 
 /**
  * @author Arkadiusz Krakowiak <arkadiusz.krakowiak@lakion.com>
@@ -16,8 +17,8 @@ final class ProductHasOptionCodeQueryFactory implements QueryFactoryInterface
      */
     public function create(array $parameters = [])
     {
-        if (!isset($parameters['option_value_code'])) {
-            throw new MissingQueryParameterException('option_value_code', get_class($this));
+        if (!isset($parameters['option_codes'])) {
+            throw new MissingQueryParameterException('option_codes', get_class($this));
         }
 
         return
@@ -25,7 +26,7 @@ final class ProductHasOptionCodeQueryFactory implements QueryFactoryInterface
                 'variants',
                 new NestedQuery(
                     'variants.optionValues',
-                    new TermQuery('variants.optionValues.code', $parameters['option_value_code'])
+                    new TermsQuery('variants.optionValues.code', $parameters['option_codes'])
                 )
             );
     }

@@ -18,7 +18,7 @@
 
         <service id="lakion_sylius_elastic_search.form_type.option_code_filter" class="Lakion\SyliusElasticSearchBundle\Form\Type\OptionCodeFilterType">
             <argument type="service" id="fos_elastica.manager.orm" />
-            <argument type="service" id="lakion_sylius_elastic_search.query_factory.product_has_code_taxon" />
+            <argument type="service" id="lakion_sylius_elastic_search.query_factory.product_has_option_taxon" />
             <argument type="service" id="lakion_sylius_elastic_search.factory.search" />
             <argument>%sylius.model.product.class%</argument>
             <argument type="service" id="sylius.repository.product_option_value" />
@@ -34,6 +34,8 @@
             <argument>%sylius.model.product.class%</argument>
             <argument type="service" id="sylius.repository.product_attribute_value" />
             <argument type="service" id="lakion_sylius_elastic_search.query_factory.product_in_product_taxons" />
+            <argument type="service" id="sylius.repository.product_attribute" />
+            <argument type="service" id="sylius.factory.product_attribute_value" />
             <tag name="form.type" />
             <tag name="filter.type" type="attribute" />
         </service>

@@ -32,11 +32,13 @@ final class ProductHasMultipleOptionCodesApplicator extends SearchCriteriaApplic
      */
     public function applyProductHasOptionCodesFilter(ProductHasOptionCodesFilter $codesFilter, Search $search)
     {
+        $list = [];
         foreach ($codesFilter->getCodes() as $code) {
-            $search->addPostFilter(
-                $this->productHasOptionCodeQueryFactory->create(['option_value_code' => $code]),
-                BoolQuery::MUST
-            );
+            $list[] = is_array($code) ? $code[0] : $code;
         }
+        $search->addPostFilter(
+            $this->productHasOptionCodeQueryFactory->create(['option_codes' => $list]),
+            BoolQuery::MUST
+        );
     }
 }

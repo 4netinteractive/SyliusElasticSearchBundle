@@ -32,11 +32,13 @@ final class ProductHasMultipleAttributeCodesApplicator extends SearchCriteriaApp
      */
     public function applyProductHasAttributeCodesFilter(ProductHasAttributeCodesFilter $codesFilter, Search $search)
     {
+        $list = [];
         foreach ($codesFilter->getCodes() as $code) {
-            $search->addPostFilter(
-                $this->productHasAttributeCodeQueryFactory->create(['attribute_value_code' => $code]),
-                BoolQuery::MUST
-            );
+            $list[] = is_array($code) ? $code[0] : $code;
         }
+        $search->addPostFilter(
+            $this->productHasAttributeCodeQueryFactory->create(['attribute_codes' => $list]),
+            BoolQuery::MUST
+        );
     }
 }

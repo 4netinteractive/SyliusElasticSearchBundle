@@ -55,7 +55,7 @@ fos_elastica:
                                 value: { type: keyword, index: not_analyzed }
                                 locale_code: { type: keyword, index: not_analyzed }
                                 attribute:
-                                    type: "nested"
+                                    type: "object"
                                     properties:
                                         code: { type: keyword, index: not_analyzed }
                         channels:
