@@ -24,6 +24,7 @@ fos_elastica:
                         description: { type: string }
                         shortDescription: { type: string }
                         slug: { type: string }
+                        raw_createdAt: { type: date }
                         translations:
                             type: "nested"
                             properties:

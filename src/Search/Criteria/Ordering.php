@@ -7,8 +7,8 @@ namespace Lakion\SyliusElasticSearchBundle\Search\Criteria;
  */
 final class Ordering
 {
-    const DEFAULT_FIELD = 'name';
-    const DEFAULT_DIRECTION = self::ASCENDING_DIRECTION;
+    const DEFAULT_FIELD = 'createdAt';
+    const DEFAULT_DIRECTION = self::DESCENDING_DIRECTION;
     const ASCENDING_DIRECTION = 'asc';
     const DESCENDING_DIRECTION = 'desc';
 
