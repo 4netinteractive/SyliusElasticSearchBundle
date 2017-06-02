@@ -113,7 +113,7 @@ final class OptionCodeFilterType extends AbstractType implements DataTransformer
         ;
 
         $aggregatedQuery = $this->buildAggregation($optionValuesUnfiltered, $options)->toArray();
-        dump($aggregatedQuery);
+
         /** @var Repository $repository */
         $repository   = $this->repositoryManager->getRepository($this->productModelClass);
         $result       = $repository->createPaginatorAdapter($aggregatedQuery);
