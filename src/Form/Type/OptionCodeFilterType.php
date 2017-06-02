@@ -113,6 +113,7 @@ final class OptionCodeFilterType extends AbstractType implements DataTransformer
         ;
 
         $aggregatedQuery = $this->buildAggregation($optionValuesUnfiltered, $options)->toArray();
+        dump($aggregatedQuery);
         /** @var Repository $repository */
         $repository   = $this->repositoryManager->getRepository($this->productModelClass);
         $result       = $repository->createPaginatorAdapter($aggregatedQuery);
@@ -163,14 +164,6 @@ final class OptionCodeFilterType extends AbstractType implements DataTransformer
             BoolQuery::MUST
         );
 
-        $search->addPostFilter(
-            new NestedQuery(
-                'productTaxons',
-                new TermQuery('productTaxons.taxon.code', strtolower($options['taxon']))
-            ),
-            BoolQuery::MUST
-        );
-
 
         foreach ($optionValues as $optionValue) {
             $hasOptionValueAggregation = new FiltersAggregation($optionValue->getCode());
@@ -187,7 +180,7 @@ final class OptionCodeFilterType extends AbstractType implements DataTransformer
 
             $search->addAggregation($hasOptionValueAggregation);
         }
-
+        $search->setSize(0);
         return $search;
     }
 

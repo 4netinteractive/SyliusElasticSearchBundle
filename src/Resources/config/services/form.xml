@@ -6,6 +6,11 @@
 
     <services>
         <service id="lakion_sylius_elastic_search.form_type.product_price_range_filter" class="Lakion\SyliusElasticSearchBundle\Form\Type\ProductPriceRangeFilterType">
+            <argument type="service" id="fos_elastica.manager.orm" />
+            <argument>%sylius.model.product.class%</argument>
+            <argument type="service" id="lakion_sylius_elastic_search.query_factory.product_has_option_taxon" />
+            <argument type="service" id="lakion_sylius_elastic_search.factory.search" />
+            <argument type="service" id="lakion_sylius_elastic_search.query_factory.product_in_product_taxons" />
             <tag name="form.type" />
             <tag name="filter.type" type="price" />
         </service>

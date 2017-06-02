@@ -259,7 +259,7 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
 
             $search->addAggregation($hasOptionValueAggregation);
         }
-
+        $search->setSize(0);
         return $search;
     }
 
