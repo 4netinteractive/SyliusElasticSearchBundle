@@ -72,7 +72,7 @@ final class SearchType extends AbstractType implements DataTransformerInterface
     {
         $resolver
             ->setDefined('taxon')
-            ->setAllowedTypes('taxon', 'string')
+            ->setAllowedTypes('taxon', ['string', 'null'])
             ->setDefined('locale')
             ->setAllowedTypes('locale', 'string')
         ;

@@ -15,6 +15,20 @@ final class SortByFieldQueryFactory implements SortFactoryInterface
      */
     public function create(Ordering $ordering)
     {
-        return new FieldSort('raw_' . $ordering->getField(), $ordering->getDirection());
+        switch ($ordering->getField()) {
+            case 'price':
+                return new FieldSort(
+                    'variants.channelPricings.' . $ordering->getField(),
+                    $ordering->getDirection(),
+                    [
+                        'nested_path' => 'variants.channelPricings',
+                        'mode' => 'min'
+                    ]
+                );
+                break;
+            default:
+                return new FieldSort('raw_' . $ordering->getField(), $ordering->getDirection());
+        }
+
     }
 }

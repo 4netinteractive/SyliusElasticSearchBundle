@@ -31,18 +31,24 @@ final class ProductHasAttributeCodeAndTaxonsQueryFactory implements QueryFactory
         if (!isset($parameters['attribute_code'])) {
             throw new MissingQueryParameterException('attribute_code', get_class($this));
         }
-        if (!isset($parameters['taxon_code'])) {
+        if (!array_key_exists('taxon_code', $parameters)) {
             throw new MissingQueryParameterException('taxon_code', get_class($this));
         }
 
         $boolQuery = new BoolQuery();
 
         $boolQuery->add(
-            new NestedQuery(
-                'productTaxons',
-                new TermQuery('productTaxons.taxon.code', strtolower($parameters['taxon_code']))
-            )
+            new TermQuery('enabled', true)
         );
+
+        if (!is_null($parameters['taxon_code'])) {
+            $boolQuery->add(
+                new NestedQuery(
+                    'productTaxons',
+                    new TermQuery('productTaxons.taxon.code', strtolower($parameters['taxon_code']))
+                )
+            );
+        }
 
         $boolQuery->add(
             new NestedQuery(

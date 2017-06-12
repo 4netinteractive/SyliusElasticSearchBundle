@@ -39,14 +39,14 @@ final class Ordering
      */
     public static function fromQueryParameters(array $parameters)
     {
-        $field = isset($parameters['sort']) ? $parameters['sort'] : self::DEFAULT_FIELD;
-        $direction = self::DEFAULT_DIRECTION;
-
-        if ('-' === $field[0]) {
-            $direction = self::DESCENDING_DIRECTION;
-            $field = trim($field, '-');
+        if (isset($parameters['sort']) && is_array($parameters['sort'])) {
+            reset($parameters['sort']);
+            $field = key($parameters['sort']);
+            $direction = current($parameters['sort']);
+        } else {
+            $field = self::DEFAULT_FIELD;
+            $direction = self::DEFAULT_DIRECTION;
         }
-
         return new self($field, $direction);
     }
 

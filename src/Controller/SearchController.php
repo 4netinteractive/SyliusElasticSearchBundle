@@ -20,6 +20,7 @@ use Lakion\SyliusElasticSearchBundle\Search\Criteria\Criteria;
 use Lakion\SyliusElasticSearchBundle\Search\Criteria\Filtering\ProductInChannelFilter;
 use Lakion\SyliusElasticSearchBundle\Search\Criteria\Filtering\ProductInTaxonFilter;
 use Lakion\SyliusElasticSearchBundle\Search\Criteria\Filtering\ProductIsEnabledFilter;
+use Lakion\SyliusElasticSearchBundle\Search\Criteria\SearchPhrase;
 use Lakion\SyliusElasticSearchBundle\Search\SearchEngineInterface;
 use Pagerfanta\Pagerfanta;
 use Sylius\Component\Core\Context\ShopperContextInterface;
@@ -93,18 +94,26 @@ final class SearchController
             $view->setTemplate($this->getTemplateFromRequest($request));
         }
 
+        $locale = $this->shopperContext->getLocaleCode();
+
         $form = $this->formFactory->create(
             FilterSetType::class,
             Criteria::fromQueryParameters(
                 $this->getResourceClassFromRequest($request),
                 [
-                    'page' => $request->get('page'),
+                    'page'     => $request->get('page'),
                     'per_page' => $request->get('per_page'),
+                    'sort'     => $request->get('sort'),
+                    new SearchPhrase($request->get('search')),
                     new ProductIsEnabledFilter(true),
                     new ProductInChannelFilter($this->shopperContext->getChannel()->getCode()),
                 ]
             ),
-            ['filter_set' => $this->getFilterSetFromRequest($request)]
+            [
+                'filter_set' => 'default',
+                'locale'     => $locale,
+                'taxon'      => null,
+            ]
         );
         $form->handleRequest($request);
 
@@ -177,22 +186,6 @@ final class SearchController
     }
 
     /**
-     * @param Request $request
-     *
-     * @return string
-     */
-    private function getFilterSetFromRequest(Request $request)
-    {
-        $syliusAttributes = $request->attributes->get('_sylius');
-
-        if (!isset($syliusAttributes['filter_set'])) {
-            throw new HttpException(Response::HTTP_BAD_REQUEST, 'You need to configure filter set in routing!');
-        }
-
-        return $syliusAttributes['filter_set'];
-    }
-
-    /**
      * @param string  $slug
      * @param Request $request
      *
@@ -212,25 +205,26 @@ final class SearchController
             Criteria::fromQueryParameters(
                 $this->getResourceClassFromRequest($request),
                 [
-                    'page' => $request->get('page'),
+                    'page'     => $request->get('page'),
                     'per_page' => $request->get('per_page'),
+                    'sort'     => $request->get('sort'),
                     new ProductIsEnabledFilter(true),
                     new ProductInTaxonFilter($taxon->getCode()),
                     new ProductInChannelFilter($this->shopperContext->getChannel()->getCode()),
                 ]
             ),
             [
-                'filter_set' => $taxon->getCode(),
+                'filter_set' => !empty($taxon->getFilterSet())
+                    ? $taxon->getFilterSet()
+                    : $taxon->getCode(),
                 'taxon'      => $taxon->getCode(),
                 'locale'     => $locale,
             ]
         );
-
         $form->handleRequest($request);
 
         /** @var Criteria $criteria */
         $criteria = $form->getData();
-
 
         /** @var PaginatorAdapterInterface $result */
         $result = $this->searchEngine->match($criteria);
@@ -281,5 +275,21 @@ final class SearchController
         );
 
         return $this->restViewHandler->handle($view);
+    }
+
+    /**
+     * @param Request $request
+     *
+     * @return string
+     */
+    private function getFilterSetFromRequest(Request $request)
+    {
+        $syliusAttributes = $request->attributes->get('_sylius');
+
+        if (!isset($syliusAttributes['filter_set'])) {
+            throw new HttpException(Response::HTTP_BAD_REQUEST, 'You need to configure filter set in routing!');
+        }
+
+        return $syliusAttributes['filter_set'];
     }
 }

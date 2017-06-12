@@ -80,7 +80,7 @@ final class FilterSetType extends AbstractType
             ->setRequired('filter_set')
             ->setAllowedTypes('filter_set', 'string')
             ->setDefined('taxon')
-            ->setAllowedTypes('taxon', 'string')
+            ->setAllowedTypes('taxon', ['string', 'null'])
             ->setDefined('locale')
             ->setAllowedTypes('locale', 'string')
         ;

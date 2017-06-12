@@ -96,38 +96,45 @@ final class OptionCodeFilterType extends AbstractType implements DataTransformer
      */
     public function buildForm(FormBuilderInterface $builder, array $options)
     {
-        /** @var ProductOptionValueInterface[] $optionValuesUnfiltered */
-        $optionValuesUnfiltered =
-            $this
-                ->productOptionValueRepository
-                ->createQueryBuilder('o')
-                ->addSelect('translation')
-                ->leftJoin('o.option', 'option')
-                ->innerJoin('o.translations', 'translation', 'WITH', 'translation.locale = :locale')
-                ->andWhere('option.code = :optionCode')
-                ->setParameter('optionCode', $options['option_code'])
-                ->setParameter('locale', $options['locale'])
-                ->addOrderBy('translation.value', 'ASC')
-                ->getQuery()
-                ->getResult()
-        ;
-
-        $aggregatedQuery = $this->buildAggregation($optionValuesUnfiltered, $options)->toArray();
-
-        /** @var Repository $repository */
-        $repository   = $this->repositoryManager->getRepository($this->productModelClass);
-        $result       = $repository->createPaginatorAdapter($aggregatedQuery);
-        $aggregations = $result->getAggregations();
-
         /** @var ProductOptionValueInterface[] $optionValues */
         $optionValues = [];
-        foreach ($optionValuesUnfiltered as $optionValue) {
-            $codeCount = (int)$aggregations[$optionValue->getCode()]['buckets']['code']['doc_count'];
-            if ($codeCount > 0) {
-                $optionValues[] = $optionValue;
-            }
+
+        if (!is_array($options['option_code'])) {
+            $options['option_code'] = [$options['option_code']];
         }
-        unset($optionValuesUnfiltered);
+
+        foreach ($options['option_code'] as $optionCode) {
+            /** @var ProductOptionValueInterface[] $optionValuesUnfiltered */
+            $optionValuesUnfiltered =
+                $this
+                    ->productOptionValueRepository
+                    ->createQueryBuilder('o')
+                    ->addSelect('translation')
+                    ->leftJoin('o.option', 'option')
+                    ->innerJoin('o.translations', 'translation', 'WITH', 'translation.locale = :locale')
+                    ->andWhere('option.code = :optionCode')
+                    ->setParameter('optionCode', $optionCode)
+                    ->setParameter('locale', $options['locale'])
+                    ->addOrderBy('translation.value', 'ASC')
+                    ->getQuery()
+                    ->getResult()
+            ;
+
+            $aggregatedQuery = $this->buildAggregation($optionValuesUnfiltered, $options)->toArray();
+
+            /** @var Repository $repository */
+            $repository   = $this->repositoryManager->getRepository($this->productModelClass);
+            $result       = $repository->createPaginatorAdapter($aggregatedQuery);
+            $aggregations = $result->getAggregations();
+
+            foreach ($optionValuesUnfiltered as $optionValue) {
+                $codeCount = (int)$aggregations[$optionValue->getCode()]['buckets']['code']['doc_count'];
+                if ($codeCount > 0) {
+                    $optionValues[] = $optionValue;
+                }
+            }
+            unset($optionValuesUnfiltered);
+        }
 
         $builder->add(
             'code',
@@ -159,8 +166,15 @@ final class OptionCodeFilterType extends AbstractType implements DataTransformer
     {
         $search = $this->searchFactory->create();
 
+        if (!is_null($options['taxon'])) {
+            $search->addPostFilter(
+                $this->productInProductTaxonsQueryFactory->create(['taxon_code' => strtolower($options['taxon'])]),
+                BoolQuery::MUST
+            );
+        }
+
         $search->addPostFilter(
-            $this->productInProductTaxonsQueryFactory->create(['taxon_code' => strtolower($options['taxon'])]),
+            new TermQuery('enabled', true),
             BoolQuery::MUST
         );
 
@@ -192,9 +206,9 @@ final class OptionCodeFilterType extends AbstractType implements DataTransformer
         $resolver
             ->setDefault('class', ProductOptionValue::class)
             ->setRequired('option_code')
-            ->setAllowedTypes('option_code', 'string')
+            ->setAllowedTypes('option_code', ['array', 'string'])
             ->setDefined('taxon')
-            ->setAllowedTypes('taxon', 'string')
+            ->setAllowedTypes('taxon', ['string', 'null'])
             ->setDefined('locale')
             ->setAllowedTypes('locale', 'string')
         ;

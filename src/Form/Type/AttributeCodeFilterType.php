@@ -22,6 +22,7 @@ use Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Query\QueryFactoryIn
 use Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Search\SearchFactoryInterface;
 use ONGR\ElasticsearchDSL\Aggregation\Bucketing\FiltersAggregation;
 use ONGR\ElasticsearchDSL\Query\Compound\BoolQuery;
+use ONGR\ElasticsearchDSL\Query\TermLevel\TermQuery;
 use ONGR\ElasticsearchDSL\Search;
 use Sylius\Component\Attribute\AttributeType\SelectAttributeType;
 use Sylius\Component\Attribute\AttributeType\TextAttributeType;
@@ -117,54 +118,60 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
      */
     public function buildForm(FormBuilderInterface $builder, array $options)
     {
-        /** @var ProductAttribute $attribute */
-        $attribute = $this->productAttributeRepository->findOneBy(['code' => $options['attribute_code']]);
+        if (!is_array($options['attribute_code'])) {
+            $options['attribute_code'] = [$options['attribute_code']];
+        }
 
         /** @var ProductAttributeValueInterface[] $attributeValues */
         $attributeValues = [];
 
-        if ($attribute->getType() === SelectAttributeType::TYPE) {
-            $query = $this
-                ->productAttributeValueRepository
-                ->createQueryBuilder('o')
-                ->select('o.json')
-                ->distinct()
-                ->andWhere('o.localeCode = :locale')
-                ->andWhere('o.attribute = :attributeId')
-                ->setParameter(':attributeId', $attribute->getId())
-                ->setParameter(':locale', $options['locale'])
-                ->getQuery()
-            ;
-            foreach ($query->getResult() as $item) {
-                /** @var ProductAttributeValue $entity */
-                $entity = $this->productAttributeValueFactory->createNew();
-                $entity->setAttribute($attribute);
-                $entity->setValue($item['json']);
-                $attributeValues[] = $entity;
-            }
-        } else {
-            /** @var ProductAttributeValue[] $optionValuesUnfiltered */
-            $query =
-                $this
+        foreach ($options['attribute_code'] as $attributeCode) {
+            /** @var ProductAttribute $attribute */
+            $attribute = $this->productAttributeRepository->findOneBy(['code' => $attributeCode]);
+
+            if ($attribute->getType() === SelectAttributeType::TYPE) {
+                $query = $this
                     ->productAttributeValueRepository
                     ->createQueryBuilder('o')
-                    ->select('o.text')
-                    ->distinct(true)
-                    ->leftJoin('o.attribute', 'attribute')
-                    ->andWhere('attribute.code = :attributeCode')
+                    ->select('o.json')
+                    ->distinct()
                     ->andWhere('o.localeCode = :locale')
-                    ->setParameter('attributeCode', $options['attribute_code'])
-                    ->setParameter('locale', $options['locale'])
+                    ->andWhere('o.attribute = :attributeId')
+                    ->setParameter(':attributeId', $attribute->getId())
+                    ->setParameter(':locale', $options['locale'])
                     ->getQuery()
-            ;
-            foreach ($query->getResult() as $item) {
-                /** @var ProductAttributeValue $entity */
-                $entity = $this->productAttributeValueFactory->createNew();
-                $entity->setAttribute($attribute);
-                $entity->setValue($item['text']);
-                $attributeValues[] = $entity;
-            }
+                ;
+                foreach ($query->getResult() as $item) {
+                    /** @var ProductAttributeValue $entity */
+                    $entity = $this->productAttributeValueFactory->createNew();
+                    $entity->setAttribute($attribute);
+                    $entity->setValue($item['json']);
+                    $attributeValues[] = $entity;
+                }
+            } else {
+                /** @var ProductAttributeValue[] $optionValuesUnfiltered */
+                $query =
+                    $this
+                        ->productAttributeValueRepository
+                        ->createQueryBuilder('o')
+                        ->select('o.text')
+                        ->distinct(true)
+                        ->leftJoin('o.attribute', 'attribute')
+                        ->andWhere('attribute.code = :attributeCode')
+                        ->andWhere('o.localeCode = :locale')
+                        ->setParameter('attributeCode', $attributeCode)
+                        ->setParameter('locale', $options['locale'])
+                        ->getQuery()
+                ;
+                foreach ($query->getResult() as $item) {
+                    /** @var ProductAttributeValue $entity */
+                    $entity = $this->productAttributeValueFactory->createNew();
+                    $entity->setAttribute($attribute);
+                    $entity->setValue($item['text']);
+                    $attributeValues[] = $entity;
+                }
 
+            }
         }
 
         $aggregatedQuery = $this->buildAggregation($attributeValues, $options)->toArray();
@@ -235,9 +242,15 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
     {
         $search = $this->searchFactory->create();
         $search->addPostFilter(
-            $this->productInProductTaxonsQueryFactory->create(['taxon_code' => $options['taxon']]),
+            new TermQuery('enabled', true),
             BoolQuery::MUST
         );
+        if (!is_null($options['taxon'])) {
+            $search->addPostFilter(
+                $this->productInProductTaxonsQueryFactory->create(['taxon_code' => $options['taxon']]),
+                BoolQuery::MUST
+            );
+        }
         foreach ($optionValues as $optionValue) {
             if ($optionValue->getAttribute()->getType() === SelectAttributeType::TYPE) {
                 $value = $optionValue->getValue()[0];
@@ -271,9 +284,9 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
         $resolver
             ->setDefault('class', ProductOptionValue::class)
             ->setRequired('attribute_code')
-            ->setAllowedTypes('attribute_code', 'string')
+            ->setAllowedTypes('attribute_code', ['array', 'string'])
             ->setDefined('taxon')
-            ->setAllowedTypes('taxon', 'string')
+            ->setAllowedTypes('taxon', ['string', 'null'])
             ->setDefined('locale')
             ->setAllowedTypes('locale', 'string')
         ;

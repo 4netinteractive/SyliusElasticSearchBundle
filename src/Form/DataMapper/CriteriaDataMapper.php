@@ -35,7 +35,8 @@ final class CriteriaDataMapper implements DataMapperInterface
         $filtering = $data instanceof Criteria ?
             [
                 'per_page' => $data->getPaginating()->getItemsPerPage(),
-                'page' => $data->getPaginating()->getCurrentPage()
+                'page' => $data->getPaginating()->getCurrentPage(),
+                'sort' => [$data->getOrdering()->getField() => $data->getOrdering()->getDirection()]
             ]
             : [];
 

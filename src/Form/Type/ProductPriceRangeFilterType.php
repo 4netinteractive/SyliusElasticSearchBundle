@@ -93,6 +93,7 @@ final class ProductPriceRangeFilterType extends AbstractType implements DataTran
         $builder
             ->add('grater_than', MoneyType::class,
                 [
+                    'empty_data' => $this->getRecursiveValue($aggregations, 'min'),
                     'data' => $this->getRecursiveValue($aggregations, 'min'),
                     'attr' => ['min' => (int)$this->getRecursiveValue($aggregations, 'min')],
                 ]
@@ -116,10 +117,12 @@ final class ProductPriceRangeFilterType extends AbstractType implements DataTran
     {
         $search = $this->searchFactory->create();
 
-        $search->addQuery(
-            $this->productInProductTaxonsQueryFactory->create(['taxon_code' => strtolower($options['taxon'])]),
-            BoolQuery::MUST
-        );
+        if (!is_null($options['taxon'])) {
+            $search->addQuery(
+                $this->productInProductTaxonsQueryFactory->create(['taxon_code' => strtolower($options['taxon'])]),
+                BoolQuery::MUST
+            );
+        }
 
         $search->addQuery(new TermQuery('enabled', true));
 
@@ -168,7 +171,7 @@ final class ProductPriceRangeFilterType extends AbstractType implements DataTran
     {
         $resolver
             ->setDefined('taxon')
-            ->setAllowedTypes('taxon', 'string')
+            ->setAllowedTypes('taxon', ['string', 'null'])
             ->setDefined('locale')
             ->setAllowedTypes('locale', 'string')
         ;
