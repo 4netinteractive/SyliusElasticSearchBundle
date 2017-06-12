@@ -113,6 +113,7 @@ final class SearchController
                 'filter_set' => 'default',
                 'locale'     => $locale,
                 'taxon'      => null,
+                'search'     => $request->get('search')
             ]
         );
         $form->handleRequest($request);
@@ -219,6 +220,7 @@ final class SearchController
                     : $taxon->getCode(),
                 'taxon'      => $taxon->getCode(),
                 'locale'     => $locale,
+                'search'     => null
             ]
         );
         $form->handleRequest($request);

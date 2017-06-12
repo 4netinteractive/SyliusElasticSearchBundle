@@ -20,6 +20,7 @@ use ONGR\ElasticsearchDSL\Aggregation\Bucketing\NestedAggregation;
 use ONGR\ElasticsearchDSL\Query\Compound\BoolQuery;
 use ONGR\ElasticsearchDSL\Aggregation\Metric\MinAggregation;
 use ONGR\ElasticsearchDSL\Aggregation\Metric\MaxAggregation;
+use ONGR\ElasticsearchDSL\Query\FullText\MatchQuery;
 use ONGR\ElasticsearchDSL\Query\Joining\NestedQuery;
 use ONGR\ElasticsearchDSL\Query\TermLevel\TermQuery;
 use ONGR\ElasticsearchDSL\Search;
@@ -124,6 +125,12 @@ final class ProductPriceRangeFilterType extends AbstractType implements DataTran
             );
         }
 
+        if (array_key_exists('search', $options) && !is_null($options['search'])) {
+            $search->addQuery(
+                new NestedQuery('translations', new MatchQuery('translations.name', $options['search']))
+            );
+        }
+
         $search->addQuery(new TermQuery('enabled', true));
 
         foreach (['min', 'max'] as $filter) {
@@ -172,6 +179,8 @@ final class ProductPriceRangeFilterType extends AbstractType implements DataTran
         $resolver
             ->setDefined('taxon')
             ->setAllowedTypes('taxon', ['string', 'null'])
+            ->setDefined('search')
+            ->setAllowedTypes('search', ['string', 'null'])
             ->setDefined('locale')
             ->setAllowedTypes('locale', 'string')
         ;

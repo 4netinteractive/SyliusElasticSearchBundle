@@ -20,6 +20,7 @@ use Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Query\QueryFactoryIn
 use Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Search\SearchFactoryInterface;
 use ONGR\ElasticsearchDSL\Aggregation\Bucketing\FiltersAggregation;
 use ONGR\ElasticsearchDSL\Query\Compound\BoolQuery;
+use ONGR\ElasticsearchDSL\Query\FullText\MatchQuery;
 use ONGR\ElasticsearchDSL\Query\Joining\NestedQuery;
 use ONGR\ElasticsearchDSL\Query\TermLevel\TermQuery;
 use ONGR\ElasticsearchDSL\Search;
@@ -173,6 +174,12 @@ final class OptionCodeFilterType extends AbstractType implements DataTransformer
             );
         }
 
+        if (array_key_exists('search', $options) && !is_null($options['search'])) {
+            $search->addQuery(
+                new NestedQuery('translations', new MatchQuery('translations.name', $options['search']))
+            );
+        }
+
         $search->addPostFilter(
             new TermQuery('enabled', true),
             BoolQuery::MUST
@@ -209,6 +216,8 @@ final class OptionCodeFilterType extends AbstractType implements DataTransformer
             ->setAllowedTypes('option_code', ['array', 'string'])
             ->setDefined('taxon')
             ->setAllowedTypes('taxon', ['string', 'null'])
+            ->setDefined('search')
+            ->setAllowedTypes('search', ['string', 'null'])
             ->setDefined('locale')
             ->setAllowedTypes('locale', 'string')
         ;

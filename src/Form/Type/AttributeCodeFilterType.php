@@ -22,6 +22,8 @@ use Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Query\QueryFactoryIn
 use Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Search\SearchFactoryInterface;
 use ONGR\ElasticsearchDSL\Aggregation\Bucketing\FiltersAggregation;
 use ONGR\ElasticsearchDSL\Query\Compound\BoolQuery;
+use ONGR\ElasticsearchDSL\Query\FullText\MatchQuery;
+use ONGR\ElasticsearchDSL\Query\Joining\NestedQuery;
 use ONGR\ElasticsearchDSL\Query\TermLevel\TermQuery;
 use ONGR\ElasticsearchDSL\Search;
 use Sylius\Component\Attribute\AttributeType\SelectAttributeType;
@@ -184,9 +186,12 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
         $attributeValuesFiltered = [];
         foreach ($attributeValues as $optionValue) {
             if ($optionValue->getAttribute()->getType() === SelectAttributeType::TYPE) {
-                $value = $optionValue->getValue()[0];
+                $value = str_replace(['+','|',' ',','], ['_','-','_','-'], $optionValue->getValue()[0]);
             } else {
-                $value = $optionValue->getValue();
+                $value = str_replace(['+','|',' ',','], ['_','-','_','-'], $optionValue->getValue());
+            }
+            if (empty($value)) {
+                continue;
             }
             $codeCount = (int)$aggregations[$value]['buckets']['code']['doc_count'];
             if ($codeCount > 0) {
@@ -219,9 +224,9 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
                 },
                 'choice_attr'   => function (ProductAttributeValue $attributeValue) use ($aggregations) {
                     if ($attributeValue->getAttribute()->getType() === SelectAttributeType::TYPE) {
-                        return ['data' => (int)$aggregations[$attributeValue->getValue()[0]]['buckets']['code']['doc_count']];
+                        return ['data' => (int)$aggregations[str_replace(['+','|',' ',','], ['_','-','_','-'], $attributeValue->getValue()[0])]['buckets']['code']['doc_count']];
                     } else {
-                        return ['data' => (int)$aggregations[$attributeValue->getValue()]['buckets']['code']['doc_count']];
+                        return ['data' => (int)$aggregations[str_replace(['+','|',' ',','], ['_','-','_','-'], $attributeValue->getValue())]['buckets']['code']['doc_count']];
                     }
                 },
                 'multiple'     => true,
@@ -245,6 +250,12 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
             new TermQuery('enabled', true),
             BoolQuery::MUST
         );
+
+        if (array_key_exists('search', $options) && !is_null($options['search'])) {
+            $search->addQuery(
+                new NestedQuery('translations', new MatchQuery('translations.name', $options['search']))
+            );
+        }
         if (!is_null($options['taxon'])) {
             $search->addPostFilter(
                 $this->productInProductTaxonsQueryFactory->create(['taxon_code' => $options['taxon']]),
@@ -257,7 +268,10 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
             } else {
                 $value = $optionValue->getValue();
             }
-            $hasOptionValueAggregation = new FiltersAggregation($value);
+            if (empty($value)) {
+                continue;
+            }
+            $hasOptionValueAggregation = new FiltersAggregation(str_replace(['+','|',' ',','], ['_','-','_','-'], $value));
 
             $hasOptionValueAggregation->addFilter(
                 $this->productHasAttributeCodeAndTaxonsQueryFactory->create(
@@ -273,6 +287,7 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
             $search->addAggregation($hasOptionValueAggregation);
         }
         $search->setSize(0);
+
         return $search;
     }
 
@@ -287,6 +302,8 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
             ->setAllowedTypes('attribute_code', ['array', 'string'])
             ->setDefined('taxon')
             ->setAllowedTypes('taxon', ['string', 'null'])
+            ->setDefined('search')
+            ->setAllowedTypes('search', ['string', 'null'])
             ->setDefined('locale')
             ->setAllowedTypes('locale', 'string')
         ;

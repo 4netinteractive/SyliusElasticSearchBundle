@@ -63,7 +63,10 @@ final class FilterSetType extends AbstractType
             $builder->add(
                 $filter->getName(),
                 $this->filterTypeRegistry->get('default', $filter->getType()),
-                array_merge(['taxon' => $options['taxon'], 'locale' => $options['locale']], $filter->getOptions())
+                array_merge(
+                    ['taxon' => $options['taxon'], 'locale' => $options['locale'], 'search' => $options['search']],
+                    $filter->getOptions()
+                )
             );
         }
 
@@ -81,6 +84,8 @@ final class FilterSetType extends AbstractType
             ->setAllowedTypes('filter_set', 'string')
             ->setDefined('taxon')
             ->setAllowedTypes('taxon', ['string', 'null'])
+            ->setDefined('search')
+            ->setAllowedTypes('search', ['string', 'null'])
             ->setDefined('locale')
             ->setAllowedTypes('locale', 'string')
         ;
