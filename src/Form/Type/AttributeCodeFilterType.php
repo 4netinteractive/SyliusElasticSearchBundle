@@ -24,6 +24,7 @@ use ONGR\ElasticsearchDSL\Aggregation\Bucketing\FiltersAggregation;
 use ONGR\ElasticsearchDSL\Query\Compound\BoolQuery;
 use ONGR\ElasticsearchDSL\Query\FullText\MatchQuery;
 use ONGR\ElasticsearchDSL\Query\Joining\NestedQuery;
+use ONGR\ElasticsearchDSL\Query\TermLevel\RangeQuery;
 use ONGR\ElasticsearchDSL\Query\TermLevel\TermQuery;
 use ONGR\ElasticsearchDSL\Search;
 use Sylius\Component\Attribute\AttributeType\SelectAttributeType;
@@ -252,10 +253,15 @@ final class AttributeCodeFilterType extends AbstractType implements DataTransfor
         );
 
         if (array_key_exists('search', $options) && !is_null($options['search'])) {
-            $search->addQuery(
+            $search->addPostFilter(
                 new NestedQuery('translations', new MatchQuery('translations.name', $options['search']))
             );
         }
+
+        $search->addPostFilter(
+            new NestedQuery('variants', new RangeQuery('variants.onHand', ['gt' => 0]))
+        );
+
         if (!is_null($options['taxon'])) {
             $search->addPostFilter(
                 $this->productInProductTaxonsQueryFactory->create(['taxon_code' => $options['taxon']]),

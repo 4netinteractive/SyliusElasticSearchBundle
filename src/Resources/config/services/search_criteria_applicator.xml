@@ -51,5 +51,9 @@
             <argument type="service" id="lakion_sylius_elastic_search.query_factory.product_is_enabled" />
             <tag name="search_criteria_applicator" applies="Lakion\SyliusElasticSearchBundle\Search\Criteria\Filtering\ProductIsEnabledFilter" />
         </service>
+        <service id="lakion_sylius_elastic_search.search_criteria_applicator.product_is_on_hand" class="Lakion\SyliusElasticSearchBundle\Search\Elastic\Applicator\Filter\ProductIsOnHandApplicator">
+            <argument type="service" id="lakion_sylius_elastic_search.query_factory.product_is_on_hand" />
+            <tag name="search_criteria_applicator" applies="Lakion\SyliusElasticSearchBundle\Search\Criteria\Filtering\ProductIsOnHandFilter" />
+        </service>
     </services>
 </container>

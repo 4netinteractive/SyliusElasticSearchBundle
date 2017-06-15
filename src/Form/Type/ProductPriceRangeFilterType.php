@@ -29,6 +29,7 @@ use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\DataTransformerInterface;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
+use ONGR\ElasticsearchDSL\Query\TermLevel\RangeQuery;
 
 /**
  * @author Arkadiusz Krakowiak <arkadiusz.krakowiak@lakion.com>
@@ -119,19 +120,23 @@ final class ProductPriceRangeFilterType extends AbstractType implements DataTran
         $search = $this->searchFactory->create();
 
         if (!is_null($options['taxon'])) {
-            $search->addQuery(
+            $search->addPostFilter(
                 $this->productInProductTaxonsQueryFactory->create(['taxon_code' => strtolower($options['taxon'])]),
                 BoolQuery::MUST
             );
         }
 
         if (array_key_exists('search', $options) && !is_null($options['search'])) {
-            $search->addQuery(
+            $search->addPostFilter(
                 new NestedQuery('translations', new MatchQuery('translations.name', $options['search']))
             );
         }
 
-        $search->addQuery(new TermQuery('enabled', true));
+        $search->addPostFilter(
+            new NestedQuery('variants', new RangeQuery('variants.onHand', ['gt' => 0]))
+        );
+
+        $search->addPostFilter(new TermQuery('enabled', true));
 
         foreach (['min', 'max'] as $filter) {
             if ($filter === 'min') {

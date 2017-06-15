@@ -18,5 +18,6 @@
         <service id="lakion_sylius_elastic_search.query_factory.product_has_attribute_taxon" class="Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Query\ProductHasAttributeCodeAndTaxonsQueryFactory" />
         <service id="lakion_sylius_elastic_search.query_factory.product_has_option_taxon" class="Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Query\ProductHasOptionCodeAndTaxonsQueryFactory" />
         <service id="lakion_sylius_elastic_search.query_factory.product_is_enabled" class="Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Query\ProductIsEnabledQueryFactory" />
+        <service id="lakion_sylius_elastic_search.query_factory.product_is_on_hand" class="Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Query\ProductIsOnHandQueryFactory" />
     </services>
 </container>

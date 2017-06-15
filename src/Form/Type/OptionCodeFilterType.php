@@ -22,6 +22,7 @@ use ONGR\ElasticsearchDSL\Aggregation\Bucketing\FiltersAggregation;
 use ONGR\ElasticsearchDSL\Query\Compound\BoolQuery;
 use ONGR\ElasticsearchDSL\Query\FullText\MatchQuery;
 use ONGR\ElasticsearchDSL\Query\Joining\NestedQuery;
+use ONGR\ElasticsearchDSL\Query\TermLevel\RangeQuery;
 use ONGR\ElasticsearchDSL\Query\TermLevel\TermQuery;
 use ONGR\ElasticsearchDSL\Search;
 use Sylius\Component\Product\Model\ProductOptionValue;
@@ -175,10 +176,14 @@ final class OptionCodeFilterType extends AbstractType implements DataTransformer
         }
 
         if (array_key_exists('search', $options) && !is_null($options['search'])) {
-            $search->addQuery(
+            $search->addPostFilter(
                 new NestedQuery('translations', new MatchQuery('translations.name', $options['search']))
             );
         }
+
+        $search->addPostFilter(
+            new NestedQuery('variants', new RangeQuery('variants.onHand', ['gt' => 0]))
+        );
 
         $search->addPostFilter(
             new TermQuery('enabled', true),
