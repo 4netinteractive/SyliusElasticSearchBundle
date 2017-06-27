@@ -15,5 +15,14 @@
     <services>
         <service id="lakion_sylius_elastic_search.factory.search" class="Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Search\SearchFactory" />
         <service id="lakion_sylius_elastic_search.form_registry.filters" class="Sylius\Bundle\ResourceBundle\Form\Registry\FormTypeRegistry" />
+        <service id="fos_elastica.listener.brand.product" class="Lakion\SyliusElasticSearchBundle\Listener\ElasticaNestedListener">
+            <tag name="doctrine.event_subscriber"/>
+            <argument type="service" id="fos_elastica.object_persister.sylius.product"/>
+            <argument type="service" id="fos_elastica.indexable"/>
+            <argument type="collection">
+                <argument key="indexName">sylius</argument>
+                <argument key="typeName">ProductVariant</argument>
+            </argument>
+        </service>
     </services>
 </container>

@@ -89,5 +89,8 @@ fos_elastica:
                         driver: orm
                         model: "%sylius.model.product.class%"
                         provider: ~
-                        listener: ~
+                        listener:
+                            insert: true
+                            update: true
+                            delete: true
                         finder: ~

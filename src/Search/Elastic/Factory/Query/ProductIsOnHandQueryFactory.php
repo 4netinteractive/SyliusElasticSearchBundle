@@ -9,6 +9,7 @@
 namespace Lakion\SyliusElasticSearchBundle\Search\Elastic\Factory\Query;
 
 use ONGR\ElasticsearchDSL\Query\Joining\NestedQuery;
+use ONGR\ElasticsearchDSL\Query\Specialized\ScriptQuery;
 use ONGR\ElasticsearchDSL\Query\TermLevel\RangeQuery;
 
 class ProductIsOnHandQueryFactory implements QueryFactoryInterface
@@ -18,6 +19,6 @@ class ProductIsOnHandQueryFactory implements QueryFactoryInterface
      */
     public function create(array $parameters = array())
     {
-        return new NestedQuery('variants', new RangeQuery('variants.onHand', ['gt' => 0]));
+        return new NestedQuery('variants', new ScriptQuery("doc['variants.onHand'].value - doc['variants.onHold'].value > 0"));
     }
 }

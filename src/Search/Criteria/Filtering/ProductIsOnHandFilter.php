@@ -17,6 +17,6 @@ final class ProductIsOnHandFilter
      */
     public function getEnabled()
     {
-        return 0;
+        return 1;
     }
 }
