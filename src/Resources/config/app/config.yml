@@ -14,6 +14,10 @@ fos_elastica:
                             type: custom
                             tokenizer: whitespace
                             filter: [lowercase]
+                    normalizer:
+                        sylius_code_normalizer:
+                            type: custom
+                            filter: [lowercase]
             types:
                 product:
                     mappings:
@@ -35,7 +39,7 @@ fos_elastica:
                         variants:
                             type: "nested"
                             properties:
-                                code: { type: keyword, index: not_analyzed }
+                                code: { type: keyword, index: not_analyzed, normalizer: sylius_code_normalizer }
                                 name: { type: string }
                                 onHand: { type: integer }
                                 onHold: { type: integer }
@@ -49,16 +53,16 @@ fos_elastica:
                                     properties:
                                         name: { type: string }
                                         value: { type: string }
-                                        code: { type: keyword, index: not_analyzed }
+                                        code: { type: keyword, index: not_analyzed, normalizer: sylius_code_normalizer }
                         attributes:
                             type: "nested"
                             properties:
-                                value: { type: keyword, index: not_analyzed }
-                                locale_code: { type: keyword, index: not_analyzed }
+                                value: { type: keyword, index: not_analyzed, normalizer: sylius_code_normalizer }
+                                locale_code: { type: keyword, index: not_analyzed, normalizer: sylius_code_normalizer }
                                 attribute:
                                     type: "object"
                                     properties:
-                                        code: { type: keyword, index: not_analyzed }
+                                        code: { type: keyword, index: not_analyzed, normalizer: sylius_code_normalizer }
                         channels:
                             type: "nested"
                             properties:
@@ -69,14 +73,14 @@ fos_elastica:
                                 taxon:
                                     type: "object"
                                     properties:
-                                        code: { type: keyword, index: not_analyzed }
+                                        code: { type: keyword, index: not_analyzed, normalizer: sylius_code_normalizer }
                                         name: { type: string }
                                 position: { type: integer }
                         mainTaxon:
                             type: "object"
                             properties:
                                 slug: { type: string }
-                                code: { type: keyword, index: not_analyzed }
+                                code: { type: keyword, index: not_analyzed, normalizer: sylius_code_normalizer }
                                 name: { type: string }
                         images:
                             type: "nested"
