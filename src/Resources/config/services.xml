@@ -21,7 +21,7 @@
             <argument type="service" id="fos_elastica.indexable"/>
             <argument type="collection">
                 <argument key="indexName">sylius</argument>
-                <argument key="typeName">ProductVariant</argument>
+                <argument key="typeName">product</argument>
             </argument>
         </service>
     </services>

@@ -6,6 +6,7 @@ use Doctrine\Common\Persistence\Event\LifecycleEventArgs;
 use FOS\ElasticaBundle\Provider\IndexableInterface;
 use Psr\Log\LoggerInterface;
 use Sylius\Component\Core\Model\ChannelPricingInterface;
+use Sylius\Component\Core\Model\ProductTaxon;
 use Sylius\Component\Core\Model\ProductVariantInterface;
 use FOS\ElasticaBundle\Persister\ObjectPersister;
 use Doctrine\Common\EventSubscriber;
@@ -116,21 +117,21 @@ class ElasticaNestedListener implements EventSubscriber
     {
         $entity = $eventArgs->getObject();
 
-        $product = null;
-
         if ($entity instanceof ProductVariantInterface) {
-            $product = $entity->getProduct();
+            $entity = $entity->getProduct();
         } elseif ($entity instanceof ChannelPricingInterface) {
-            $product = $entity->getProductVariant()->getProduct();
+            $entity = $entity->getProductVariant()->getProduct();
         } elseif ($entity instanceof ChannelPricingInterface) {
-            $product = $entity->getProductVariant()->getProduct();
+            $entity = $entity->getProductVariant()->getProduct();
+        } elseif ($entity instanceof ProductTaxon) {
+            $entity = $entity->getProduct();
         }
-        if (!is_null($product) && $this->objectPersister->handlesObject($product)) {
-            if ($this->isObjectIndexable($product)) {
-                $this->scheduledForUpdate[] = $product;
+        if ($this->objectPersister->handlesObject($entity)) {
+            if ($this->isObjectIndexable($entity)) {
+                $this->scheduledForUpdate[] = $entity;
             } else {
                 // Delete if no longer indexable
-                $this->scheduleForDeletion($product);
+                $this->scheduleForDeletion($entity);
             }
         }
     }
@@ -168,17 +169,22 @@ class ElasticaNestedListener implements EventSubscriber
         $entity = $eventArgs->getObject();
 
         if ($entity instanceof ProductVariantInterface) {
-            $question = $entity->getProduct();
-            if ($this->objectPersister->handlesObject($question)) {
-                if ($this->isObjectIndexable($question)) {
-                    $this->scheduledForUpdate[] = $question;
-                } else {
-                    // Delete if no longer indexable
-                    $this->scheduleForDeletion($question);
-                }
+            $entity = $entity->getProduct();
+        } elseif ($entity instanceof ChannelPricingInterface) {
+            $entity = $entity->getProductVariant()->getProduct();
+        } elseif ($entity instanceof ChannelPricingInterface) {
+            $entity = $entity->getProductVariant()->getProduct();
+        } elseif ($entity instanceof ProductTaxon) {
+            $entity = $entity->getProduct();
+        }
+        if ($this->objectPersister->handlesObject($entity)) {
+            if ($this->isObjectIndexable($entity)) {
+                $this->scheduledForUpdate[] = $entity;
+            } else {
+                // Delete if no longer indexable
+                $this->scheduleForDeletion($entity);
             }
         }
-
     }
 
     /**
@@ -191,6 +197,15 @@ class ElasticaNestedListener implements EventSubscriber
     {
         $entity = $eventArgs->getObject();
 
+        if ($entity instanceof ProductVariantInterface) {
+            $entity = $entity->getProduct();
+        } elseif ($entity instanceof ChannelPricingInterface) {
+            $entity = $entity->getProductVariant()->getProduct();
+        } elseif ($entity instanceof ChannelPricingInterface) {
+            $entity = $entity->getProductVariant()->getProduct();
+        } elseif ($entity instanceof ProductTaxon) {
+            $entity = $entity->getProduct();
+        }
         if ($this->objectPersister->handlesObject($entity)) {
             $this->scheduleForDeletion($entity);
         }
