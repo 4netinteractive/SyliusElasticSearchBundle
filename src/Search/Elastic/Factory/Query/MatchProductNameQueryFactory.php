@@ -6,9 +6,7 @@ use Lakion\SyliusElasticSearchBundle\Exception\MissingQueryParameterException;
 use ONGR\ElasticsearchDSL\Query\Compound\BoolQuery;
 use ONGR\ElasticsearchDSL\Query\Joining\NestedQuery;
 use ONGR\ElasticsearchDSL\Query\FullText\MatchQuery;
-use ONGR\ElasticsearchDSL\Query\TermLevel\PrefixQuery;
-use ONGR\ElasticsearchDSL\Query\TermLevel\TermQuery;
-use ONGR\ElasticsearchDSL\Query\TermLevel\TermsQuery;
+use ONGR\ElasticsearchDSL\Query\TermLevel\WildcardQuery;
 
 /**
  * @author Arkadiusz Krakowiak <arkadiusz.krakowiak@lakion.com>
@@ -29,18 +27,23 @@ final class MatchProductNameQueryFactory implements QueryFactoryInterface
             new NestedQuery('translations', new MatchQuery('translations.name', $parameters['phrase'])),
             BoolQuery::SHOULD
         );
-        $query->add(
-            new NestedQuery('variants', new PrefixQuery('variants.code', $parameters['phrase'])),
-            BoolQuery::SHOULD
-        );
 
-        $query->add(
-            new NestedQuery(
-                'attributes',
-                new MatchQuery('attributes.value', $parameters['phrase'], ['operator' => 'or'])
-            ),
-            BoolQuery::SHOULD
-        );
+        foreach (explode(' ', $parameters['phrase']) as $part) {
+            $query->add(
+                new NestedQuery(
+                    'variants',
+                    new WildcardQuery('variants.code', sprintf('*%s*', $part))
+                ),
+                BoolQuery::SHOULD
+            );
+            $query->add(
+                new NestedQuery(
+                    'attributes',
+                    new WildcardQuery('attributes.value', sprintf('*%s*', $part))
+                ),
+                BoolQuery::SHOULD
+            );
+        }
 
         return $query;
     }
