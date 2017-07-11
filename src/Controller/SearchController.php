@@ -93,6 +93,8 @@ final class SearchController
         $view = View::create();
         if ($this->isHtmlRequest($request)) {
             $view->setTemplate($this->getTemplateFromRequest($request));
+        } else {
+            $view->setTemplate('@SyliusShop/Product/Index/_main.html.twig');
         }
 
         $locale = $this->shopperContext->getLocaleCode();
@@ -199,6 +201,8 @@ final class SearchController
         $view = View::create();
         if ($this->isHtmlRequest($request)) {
             $view->setTemplate($this->getTemplateFromRequest($request));
+        } else {
+            $view->setTemplate('@SyliusShop/Product/Index/_main.html.twig');
         }
         $locale = $this->shopperContext->getLocaleCode();
         $taxon  = $this->taxonRepository->findOneBySlug($slug, $locale);
