@@ -11,13 +11,19 @@
 
 namespace Lakion\SyliusElasticSearchBundle\Controller;
 
+use FOS\ElasticaBundle\Paginator\FantaPaginatorAdapter;
+use FOS\ElasticaBundle\Paginator\PaginatorAdapterInterface;
 use FOS\RestBundle\View\ConfigurableViewHandlerInterface;
 use FOS\RestBundle\View\View;
 use Lakion\SyliusElasticSearchBundle\Form\Type\FilterSetType;
 use Lakion\SyliusElasticSearchBundle\Search\Criteria\Criteria;
 use Lakion\SyliusElasticSearchBundle\Search\Criteria\Filtering\ProductInChannelFilter;
 use Lakion\SyliusElasticSearchBundle\Search\Criteria\Filtering\ProductInTaxonFilter;
+use Lakion\SyliusElasticSearchBundle\Search\Criteria\Filtering\ProductIsEnabledFilter;
+use Lakion\SyliusElasticSearchBundle\Search\Criteria\Filtering\ProductIsOnHandFilter;
+use Lakion\SyliusElasticSearchBundle\Search\Criteria\SearchPhrase;
 use Lakion\SyliusElasticSearchBundle\Search\SearchEngineInterface;
+use Pagerfanta\Pagerfanta;
 use Sylius\Component\Core\Context\ShopperContextInterface;
 use Sylius\Component\Taxonomy\Repository\TaxonRepositoryInterface;
 use Symfony\Component\Form\FormFactoryInterface;
@@ -57,10 +63,10 @@ final class SearchController
 
     /**
      * @param ConfigurableViewHandlerInterface $restViewHandler
-     * @param SearchEngineInterface $searchEngine
-     * @param FormFactoryInterface $formFactory
-     * @param TaxonRepositoryInterface $taxonRepository
-     * @param ShopperContextInterface $shopperContext
+     * @param SearchEngineInterface            $searchEngine
+     * @param FormFactoryInterface             $formFactory
+     * @param TaxonRepositoryInterface         $taxonRepository
+     * @param ShopperContextInterface          $shopperContext
      */
     public function __construct(
         ConfigurableViewHandlerInterface $restViewHandler,
@@ -70,10 +76,11 @@ final class SearchController
         ShopperContextInterface $shopperContext
     ) {
         $this->restViewHandler = $restViewHandler;
-        $this->searchEngine = $searchEngine;
-        $this->formFactory = $formFactory;
+        $this->searchEngine    = $searchEngine;
+        $this->formFactory     = $formFactory;
         $this->taxonRepository = $taxonRepository;
-        $this->shopperContext = $shopperContext;
+        $this->shopperContext  = $shopperContext;
+        $this->shopperContext  = $shopperContext;
     }
 
     /**
@@ -86,108 +93,69 @@ final class SearchController
         $view = View::create();
         if ($this->isHtmlRequest($request)) {
             $view->setTemplate($this->getTemplateFromRequest($request));
+        } else {
+            $view->setTemplate('@SyliusShop/Product/Index/_main.html.twig');
         }
+
+        $locale = $this->shopperContext->getLocaleCode();
 
         $form = $this->formFactory->create(
             FilterSetType::class,
             Criteria::fromQueryParameters(
                 $this->getResourceClassFromRequest($request),
                 [
+                    'page'     => $request->get('page'),
                     'per_page' => $request->get('per_page'),
-                    new ProductInChannelFilter($this->shopperContext->getChannel()->getCode())
+                    'sort'     => $request->get('sort'),
+                    new SearchPhrase($request->get('search')),
+                    new ProductIsEnabledFilter(true),
+//                    new ProductIsOnHandFilter(),
+                    new ProductInChannelFilter($this->shopperContext->getChannel()->getCode()),
                 ]
             ),
-            ['filter_set' => $this->getFilterSetFromRequest($request)]
+            [
+                'filter_set' => 'default',
+                'locale'     => $locale,
+                'taxon'      => null,
+                'search'     => $request->get('search')
+            ]
         );
         $form->handleRequest($request);
 
         /** @var Criteria $criteria */
         $criteria = $form->getData();
 
+        /** @var PaginatorAdapterInterface $result */
         $result = $this->searchEngine->match($criteria);
-        $partialResult = $result->getResults($criteria->getPaginating()->getOffset(), $criteria->getPaginating()->getItemsPerPage());
 
-        $view->setData([
-            'products' => $partialResult->toArray(),
-            'form' => $form->createView(),
-            'criteria' => $criteria,
-        ]);
+        $adapter = new FantaPaginatorAdapter($result);
+        $pager   = new Pagerfanta($adapter);
+        $pager->setNormalizeOutOfRangePages(false);
+        $pager->setAllowOutOfRangePages(true);
+        $pager->setMaxPerPage($criteria->getPaginating()->getItemsPerPage());
+        $pager->setCurrentPage($criteria->getPaginating()->getCurrentPage());
+
+        $pager->getCurrentPageResults();
+
+        $view->setData(
+            [
+                'resources' => ['data' => $pager],
+                'form'      => $form->createView(),
+                'criteria'  => $criteria,
+            ]
+        );
 
         return $this->restViewHandler->handle($view);
     }
 
     /**
-     * @param string $slug
      * @param Request $request
      *
-     * @return Response
+     * @return bool
      */
-    public function filterByTaxonAction($slug, Request $request)
+    private function isHtmlRequest(Request $request)
     {
-        $view = View::create();
-        if ($this->isHtmlRequest($request)) {
-            $view->setTemplate($this->getTemplateFromRequest($request));
-        }
-        $locale = $this->shopperContext->getLocaleCode();
-        $taxon = $this->taxonRepository->findOneBySlug($slug, $locale);
-
-        $form = $this->formFactory->create(
-            FilterSetType::class,
-            Criteria::fromQueryParameters(
-                $this->getResourceClassFromRequest($request),
-                ['per_page' => $request->get('per_page')]
-            ),
-            ['filter_set' => $taxon->getCode()]
-        );
-        $form->handleRequest($request);
-
-        /** @var Criteria $criteria */
-        $criteria = $form->getData();
-        $criteria = Criteria::fromQueryParameters(
-            $criteria->getResourceAlias(),
-            array_merge($criteria->getFiltering()->getFields(), [
-                    new ProductInTaxonFilter($taxon->getCode()),
-                    new ProductInChannelFilter($this->shopperContext->getChannel()->getCode())
-                ]
-            )
-        );
-
-        $result = $this->searchEngine->match($criteria);
-        $partialResult = $result->getResults($criteria->getPaginating()->getOffset(), $criteria->getPaginating()->getItemsPerPage());
-
-        $view->setData([
-            'products' => $partialResult->toArray(),
-            'form' => $form->createView(),
-            'criteria' => $criteria,
-        ]);
-
-        return $this->restViewHandler->handle($view);
-    }
-
-    /**
-     * @param string $filterSetName
-     *
-     * @return Response
-     */
-    public function renderFilterSetAction(Request $request, $filterSetName)
-    {
-        $view = View::create();
-        $view->setTemplate($this->getTemplateFromRequest($request));
-        if (!$this->isHtmlRequest($request)) {
-            throw new HttpException(Response::HTTP_BAD_REQUEST);
-        }
-
-        $form = $this->formFactory->create(
-            FilterSetType::class,
-            null,
-            ['filter_set' => $filterSetName]
-        );
-
-        $view->setData([
-            'form' => $form->createView(),
-        ]);
-
-        return $this->restViewHandler->handle($view);
+        return !$request->isXmlHttpRequest() && 'html' === $request->getRequestFormat();
     }
 
     /**
@@ -223,13 +191,99 @@ final class SearchController
     }
 
     /**
+     * @param string  $slug
      * @param Request $request
      *
-     * @return bool
+     * @return Response
      */
-    private function isHtmlRequest(Request $request)
+    public function filterByTaxonAction($slug, Request $request)
     {
-        return !$request->isXmlHttpRequest() && 'html' === $request->getRequestFormat();
+        $view = View::create();
+        if ($this->isHtmlRequest($request)) {
+            $view->setTemplate($this->getTemplateFromRequest($request));
+        } else {
+            $view->setTemplate('@SyliusShop/Product/Index/_main.html.twig');
+        }
+        $locale = $this->shopperContext->getLocaleCode();
+        $taxon  = $this->taxonRepository->findOneBySlug($slug, $locale);
+
+        $form = $this->formFactory->create(
+            FilterSetType::class,
+            Criteria::fromQueryParameters(
+                $this->getResourceClassFromRequest($request),
+                [
+                    'page'     => $request->get('page'),
+                    'per_page' => $request->get('per_page'),
+                    'sort'     => $request->get('sort'),
+                    new ProductIsEnabledFilter(true),
+//                    new ProductIsOnHandFilter(),
+                    new ProductInTaxonFilter($taxon->getCode()),
+                    new ProductInChannelFilter($this->shopperContext->getChannel()->getCode()),
+                ]
+            ),
+            [
+                'filter_set' => method_exists($taxon, 'getFilterSet') && !empty($taxon->getFilterSet())
+                    ? $taxon->getFilterSet()
+                    : $taxon->getCode(),
+                'taxon'      => $taxon->getCode(),
+                'locale'     => $locale,
+                'search'     => null
+            ]
+        );
+        $form->handleRequest($request);
+
+        /** @var Criteria $criteria */
+        $criteria = $form->getData();
+
+        /** @var PaginatorAdapterInterface $result */
+        $result = $this->searchEngine->match($criteria);
+
+        $adapter = new FantaPaginatorAdapter($result);
+        $pager   = new Pagerfanta($adapter);
+        $pager->setNormalizeOutOfRangePages(false);
+        $pager->setAllowOutOfRangePages(true);
+        $pager->setMaxPerPage($criteria->getPaginating()->getItemsPerPage());
+        $pager->setCurrentPage($criteria->getPaginating()->getCurrentPage());
+
+        $pager->getCurrentPageResults();
+
+        $view->setData(
+            [
+                'resources' => ['data' => $pager],
+                'form'      => $form->createView(),
+                'criteria'  => $criteria,
+            ]
+        );
+
+        return $this->restViewHandler->handle($view);
+    }
+
+    /**
+     * @param string $filterSetName
+     *
+     * @return Response
+     */
+    public function renderFilterSetAction(Request $request, $filterSetName)
+    {
+        $view = View::create();
+        $view->setTemplate($this->getTemplateFromRequest($request));
+        if (!$this->isHtmlRequest($request)) {
+            throw new HttpException(Response::HTTP_BAD_REQUEST);
+        }
+
+        $form = $this->formFactory->create(
+            FilterSetType::class,
+            null,
+            ['filter_set' => $filterSetName]
+        );
+
+        $view->setData(
+            [
+                'form' => $form->createView(),
+            ]
+        );
+
+        return $this->restViewHandler->handle($view);
     }
 
     /**
