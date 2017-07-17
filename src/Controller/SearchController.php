@@ -109,7 +109,7 @@ final class SearchController
                     'sort'     => $request->get('sort'),
                     new SearchPhrase($request->get('search')),
                     new ProductIsEnabledFilter(true),
-                    new ProductIsOnHandFilter(),
+//                    new ProductIsOnHandFilter(),
                     new ProductInChannelFilter($this->shopperContext->getChannel()->getCode()),
                 ]
             ),
@@ -216,13 +216,13 @@ final class SearchController
                     'per_page' => $request->get('per_page'),
                     'sort'     => $request->get('sort'),
                     new ProductIsEnabledFilter(true),
-                    new ProductIsOnHandFilter(),
+//                    new ProductIsOnHandFilter(),
                     new ProductInTaxonFilter($taxon->getCode()),
                     new ProductInChannelFilter($this->shopperContext->getChannel()->getCode()),
                 ]
             ),
             [
-                'filter_set' => !empty($taxon->getFilterSet())
+                'filter_set' => method_exists($taxon, 'getFilterSet') && !empty($taxon->getFilterSet())
                     ? $taxon->getFilterSet()
                     : $taxon->getCode(),
                 'taxon'      => $taxon->getCode(),
