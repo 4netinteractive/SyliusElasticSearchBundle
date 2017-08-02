@@ -28,11 +28,6 @@ final class ProductHasAttributeCodeQueryFactory implements QueryFactoryInterface
                 'attributes', new TermsQuery('attributes.value', $parameters['attribute_codes'])
             )
         );
-        $query->add(
-            new NestedQuery(
-                'variants', new RangeQuery('variants.onHand', ['gt' => 0])
-            )
-        );
 
         return $query;
     }
