@@ -206,6 +206,10 @@ final class SearchController
         }
         $locale = $this->shopperContext->getLocaleCode();
         $taxon  = $this->taxonRepository->findOneBySlug($slug, $locale);
+        $sort   = $request->get('sort');
+        if (is_null($sort)){
+            $sort = ['position'=> 'asc'];
+        }
 
         $form = $this->formFactory->create(
             FilterSetType::class,
@@ -214,7 +218,7 @@ final class SearchController
                 [
                     'page'     => $request->get('page'),
                     'per_page' => $request->get('per_page'),
-                    'sort'     => $request->get('sort'),
+                    'sort'     => $sort,
                     new ProductIsEnabledFilter(true),
 //                    new ProductIsOnHandFilter(),
                     new ProductInTaxonFilter($taxon->getCode()),

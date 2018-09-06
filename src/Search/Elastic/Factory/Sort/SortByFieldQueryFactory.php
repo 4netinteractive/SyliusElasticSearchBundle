@@ -26,6 +26,20 @@ final class SortByFieldQueryFactory implements SortFactoryInterface
                     ]
                 );
                 break;
+            case 'position':
+                return new FieldSort(
+                    'productTaxons.' . $ordering->getField(),
+                    $ordering->getDirection(),[
+                        'nested_path' => 'productTaxons',
+                        'mode' => 'min',
+                        'nested_filter' => [
+                            'term' => [
+                                'productTaxons.taxon.code' => $ordering->getTaxonCode()
+                            ]
+                        ]
+                    ]
+                );
+                break;
             default:
                 return new FieldSort('raw_' . $ordering->getField(), $ordering->getDirection());
         }
